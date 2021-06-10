@@ -11,13 +11,13 @@ import os
 import multiprocessing as mp
 from MUA_STA_RFs import extract_NP_MUA, get_STA
 
-#, encoding='latin1'
+
 #%% Parameters
 
 stim_ttl_dir = "/media/kailun/kailun_sata_inte/neuropix-data/2019-07-03_16-11-32/experiment1/recording1/events/Neuropix-PXI-100.0/TTL_1"
 raw_data_dir = "/media/kailun/kailun_sata_inte/neuropix-data/2019-07-03_16-11-32/experiment1/recording1/continuous/Neuropix-PXI-100.0"
-save_dir = "/home/kailun/Desktop/PhD/other_projects/tangential_recording"
-stimulus_path = "/media/kailun/kailun_sata_inte/kerstin_data/back-up-visual-stim/VisualStimuli/stimuli/locally_light_sparse_noise_36_22_target_size_3_targets_per_frame_2_trials_10_background_0.0_20181120.npy"
+save_dir = "/home/kailun/Desktop/tangential_recording"
+stimulus_path = "/media/kailun/kailun_sata_inte/VisualStimuli/stimuli/locally_light_sparse_noise_36_22_target_size_3_targets_per_frame_2_trials_10_background_0.0_20181120.npy"
 stimulus_data = np.load(stimulus_path, allow_pickle=True).item()
 sparse_noise_stim = stimulus_data['frames'].astype(float)   # Sparse noise stimuli with shape = (ny, nx, nframes).
 STA_lags = np.arange(-7, 3)   # The range of lags for computing STA.
