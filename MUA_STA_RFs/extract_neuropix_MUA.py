@@ -184,7 +184,7 @@ class extract_NP_MUA:
         )
         for n, i in enumerate(idx[:-1], 1):
             if not os.path.exists(os.path.join(self.save_dir, "slice{}.npy".format(n))):
-                t1 = time.time()
+                t1 = time()
                 self._cur_start = i
                 self._cur_stop = idx[n]
                 print(
@@ -194,7 +194,7 @@ class extract_NP_MUA:
                 )
                 self._get_cur_data()
                 self._get_spiketimes(n)
-                print("Slice {} done! Time: {:.2f}s".format(n, time.time() - t1))
+                print("Slice {} done! Time: {:.2f}s".format(n, time() - t1))
             else:
                 print("Slice {} exists!".format(n))
         self._save_spiketimes_dict(n)
@@ -250,7 +250,7 @@ class extract_NP_MUA:
 
     def _get_cur_data(self):
         """To get the data of current slice."""
-        t0 = time.time()
+        t0 = time()
         tmp_file = os.path.join(self.save_dir, "temp.npy")
         if os.path.exists(tmp_file):
             try:
@@ -264,19 +264,19 @@ class extract_NP_MUA:
             mode="w+",
             shape=self.raw_data[:, self._cur_start : self._cur_stop].shape,
         )
-        t1 = time.time()
+        t1 = time()
         print("Open file time: {:.2f}s".format(t1 - t0))
         self.cur_data[:] = self.raw_data[:, self._cur_start : self._cur_stop]
-        t2 = time.time()
+        t2 = time()
         print("Copy raw data slice time: {:.2f}s".format(t2 - t1))
 
         # subtract the common average reference
         self._median_subtraction(0)
-        t3 = time.time()
+        t3 = time()
         print("Done subtracting axis-0 median: {:.2f}s".format(t3 - t2))
         # offset correction for Phase3A probes
         self._median_subtraction(1)
-        t4 = time.time()
+        t4 = time()
         print("Done subtracting axis-1 median: {:.2f}s".format(t4 - t3))
 
     def _get_spiketimes(self, slice_idx):
