@@ -172,7 +172,7 @@ class extract_NP_MUA:
         )
         if self.slice_len:
             idx = np.arange(
-                extract_start_idx, extract_stop_idx, self.slice_len * self.sampling_rate
+                extract_start_idx, extract_stop_idx, self.slice_len * self._sampling_rate
             )
             idx = np.append(idx, extract_stop_idx)
         else:
