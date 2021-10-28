@@ -9,7 +9,7 @@ Created on Mon May 31 14:29:51 2021
 import numpy as np
 import os
 import multiprocessing as mp
-from MUA_STA_RFs import extract_NP_MUA, get_STA
+from MUA_STA_RFs import *
 
 
 #%% Parameters
@@ -56,4 +56,17 @@ spiketimes = np.load(os.path.join(save_dir, pix_data.spiketimes_fname), allow_pi
 frametimes_dict = np.load(os.path.join(save_dir, pix_data.stim_ttl_fname), allow_pickle=True).item()
 LSN_frametimes = frametimes_dict["frametimes"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
 STA = get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
-fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
+STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
+RF_overview_fig = plot_RF_overview(
+        STA.STA_RFs, 
+        sparse_noise_stim, 
+        spiketimes, 
+        LSN_frametimes, 
+        psth_start_sec=-0.1, 
+        psth_end_sec=0.3, 
+        psth_interv_sec=0.01, 
+        RF_contour_lvl=0.5, 
+        sampling_rate=pix_data._sampling_rate,
+        figsize=(15,10),
+        psth_tick_interv=20,
+)
