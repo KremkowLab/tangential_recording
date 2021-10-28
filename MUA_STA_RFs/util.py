@@ -11,6 +11,7 @@ from scipy.signal import butter, filtfilt
 from scipy import interpolate
 from platform import python_version as py_ver
 import os, shutil
+import matplotlib.pyplot as plt
 
 
 def get_action(message):
@@ -303,3 +304,121 @@ def align_and_save_timestamps(
     np.save(os.path.join(new_ttl_dir, "timestamps.npy"), timestamps_aligned)
     shutil.copy(os.path.join(to_be_aligned_ttl_dir, "channel_states.npy"), new_ttl_dir)
     return new_ttl_dir
+
+
+def plot_RF_overview(
+    RFs, 
+    stimulus, 
+    spiketimes, 
+    frametimes, 
+    psth_start_sec, 
+    psth_end_sec, 
+    psth_interv_sec, 
+    RF_contour_lvl, 
+    sampling_rate=30000,
+    figsize=(10,5),
+    psth_tick_interv=10,
+):
+    """To plot the PSTH of the max STA RF pixel and the RF contours for all channels.
+    PARAMETERS
+    ----------
+    RFs : array-like, 3D
+        The STA receptve fields for all channels. Shape = (n_chs, ylen, xlen).
+    stimulus : array-like, 3d
+        Locally sparse noise stimuli with shape = (ny, nx, nframes).
+    spiketimes : dict
+        Dictionary containing the spiketimes for each channel.
+        The dictionary keys are the channels.
+    frametimes : array_like, 1d
+        The stimulus timestamps/TTLs for the locally sparse noise frames.
+    psth_start_sec, psth_end_sec, psth_interv_sec : float
+        The start, end, and interval for the PSTH bins in second.
+    RF_contour_lvl : float
+        The RF contour level to be plotted.
+    sampling_rate : int or float
+        The Neuropixels' sampling rate in Hz.
+    psth_tick_interv : int
+        The interval for labeling the PSTH bins.
+    
+    RETURN
+    ------
+    fig : matplotlib object
+        The figure containing the RFs' PSTH and RF contours for all channels.
+    """
+    psth_range_sec = np.arange(psth_start_sec, psth_end_sec, psth_interv_sec)
+    psth_range = psth_range_sec * sampling_rate
+    maxRFpsths = get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    
+    ax1.imshow(maxRFpsths, cmap="magma")
+    ax1.set_xticks(np.arange(0, psth_range.shape[0], int(psth_tick_interv)))
+    ax1.set_xticklabels(np.round(psth_range_sec, 2)[::int(psth_tick_interv)])
+    ax1.set_aspect("equal")
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("Channel")
+    ax1.set_title("Max RF pixel PSTHs")
+    
+    plt.sca(ax2)
+    for RF in RFs:
+        plt.contour(RF, [RF_contour_lvl])
+    ax2.set_aspect("equal")
+    ax2.set_title("RF contours")
+    return fig
+
+
+def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range):
+    """To compute the PSTH of the max STA RF pixel for all channels.
+    PARAMETERS
+    ----------
+    RFs : array-like, 3D
+        The STA receptve fields for all channels. Shape = (n_chs, ylen, xlen).
+    stimulus : array-like, 3d
+        Locally sparse noise stimuli with shape = (ny, nx, nframes).
+    spiketimes : dict
+        Dictionary containing the spiketimes for each channel.
+        The dictionary keys are the channels.
+    frametimes : array_like, 1d
+        The stimulus timestamps/TTLs for the locally sparse noise frames.
+    psth_range : array-like, 1D
+        The bins for computing the PSTH. Length = n_psth_bins.
+    
+    RETURN
+    ------
+    psths : array-like, 2D
+        The computed PSTHs for all channels. Shape = (n_chs, n_psth_bins).
+    """
+    st_keys = list(spiketimes.keys())
+    psths = np.zeros((RFs.shape[0], psth_range.shape[0]-1))
+    for ch, RF in enumerate(RFs):
+        idx = np.argmax(np.abs(RF))
+        y, x = np.unravel_index(idx, RF.shape)
+        triggers, = np.where(stimulus[y, x, :])
+        ft = frametimes[triggers]
+        st = spiketimes[st_keys[ch]]
+        psths[ch] = calc_psth(st, ft, psth_range)
+    return psths
+
+
+def calc_psth(spiketimes, frametimes, psth_range):
+    """To compute the PSTH.
+    PARAMETERS
+    ----------
+    spiketimes : dict
+        Dictionary containing the spiketimes for each channel.
+        The dictionary keys are the channels.
+    frametimes : array_like, 1d
+        The stimulus timestamps/TTLs for the locally sparse noise frames.
+    psth_range : array-like, 1D
+        The bins for computing the PSTH. Length = n_psth_bins.
+        
+    RETURN
+    ------
+    psth : array-like, 1D
+        The computed PSTH. Length = n_psth_bins.
+    """
+    psth_tmp = np.zeros(psth_range.shape[0] - 1)
+    for ft in frametimes:
+        freq, x_axis = np.histogram(spiketimes - ft, psth_range)
+        psth_tmp += freq
+    psth = psth_tmp / len(frametimes)
+    return psth

@@ -39,6 +39,7 @@ class get_STA:
             os.makedirs(self.save_dir)
         self._get_info()
         self._calc_STA()
+        self._get_STA_RFs()
         print(self)
 
     def __str__(self):
@@ -88,6 +89,14 @@ class get_STA:
         save_path = os.path.join(self.save_dir, "STA_arr.npy")
         np.save(save_path, self.STA)
         print("\nThe STA is saved as {}".format(save_path))
+        
+    def _get_STA_RFs(self):
+        """To get the RFs based on the max STA."""
+        self.STA_RFs = np.zeros((self.n_tot_chs, self.n_y, self.n_x))
+        for ch in range(self.n_tot_chs):
+            idx = np.argmax(np.abs(self.STA[ch]))
+            y, x, frame = np.unravel_index(idx, self.STA[ch].shape)
+            self.STA_RFs[ch] = self.STA[ch, :, :, frame]
 
     def plot(self, subplots_rc=(20, 20), fig_fname="STA_RFs.png", fig_size_pix=None):
         """To plot and save the STA RFs.
@@ -125,9 +134,7 @@ class get_STA:
         for i in range(nrows * ncols):
             ax = axes.ravel()[i]
             if i < self.n_tot_chs:
-                idx = np.argmax(np.abs(self.STA[i]))
-                x, y, frame = np.unravel_index(idx, self.STA[i].shape)
-                pch = ax.pcolormesh(self.STA[i, :, :, frame], cmap="magma")
+                pch = ax.pcolormesh(self.STA_RFs[i, :, :], cmap="magma")
                 ax.set_aspect("equal", "box")
                 ax.set_title("ch {}".format(self.all_channels[i]), fontsize=10, y=0.95)
                 ax.get_xaxis().set_visible(False)
