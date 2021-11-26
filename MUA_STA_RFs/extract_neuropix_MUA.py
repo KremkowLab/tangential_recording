@@ -254,12 +254,12 @@ class extract_NP_MUA:
         tmp_file = os.path.join(self.save_dir, "temp.npy")
         if os.path.exists(tmp_file):
             try:
-                os.remove(tmp_file)
                 del self.cur_data
+                os.remove(tmp_file)
             except AttributeError:
                 pass
         self.cur_data = np.memmap(
-            os.path.join(self.save_dir, "temp.npy"),
+            tmp_file,
             dtype=np.int16,
             mode="w+",
             shape=self.raw_data[:, self._cur_start : self._cur_stop].shape,
