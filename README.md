@@ -1,6 +1,6 @@
 # Probe placement optimization for Neuropixels tangential recording
 
-This repo implements the receptive field (RF) analysis via spike-triggered average (STA) of the multi-unit activity (MUA) from Neuropixels probe recordings. This scripts are made to quickly probe the presence of any neuronal responses to visual stimulus is any region, as adviced to perform tangential recordings in the mouse superior colliculus (SC, Sibille Kremkow J. Neurosci. 2022). You should produce first a sparse noise matrice and have it exposed in one of your screen in the set-up while making an electrical pulse copy for each exposed image into one of the digital inputs of your neuropixel recording system. This pulse is what we define as the TTL and will guarantee a proper alignement of the recorded neuronal activity from the Neuropixels probe to the timing of the exposed stimulus which will produce the PSTH and then the STA-RF.
+This repo implements the receptive field (RF) analysis via spike-triggered average (STA) of the multi-unit activity (MUA) from Neuropixels probe recordings. This scripts are made to quickly probe the presence of any neuronal responses to visual stimulus in any region covered by the probe, as adviced to perform tangential recordings in the mouse superior colliculus (Sibille Kremkow J. Neurosci. 2022). You should produce first a sparse noise matrice and have it exposed in one of your screen within the set-up while synchronizing an electrical pulse copy for each exposed images into one of the digital inputs of your neuropixel recording system. This pulse is what we define as the TTL and will guarantee a proper alignement of the recorded neuronal activity from the Neuropixels probe to the timing of the exposed stimulus which will produce the PSTH and then the STA-RF.
 
 Run the `MUA_STA_RFs_exec.py` to:
 1. extract the MUA from the Neuropixels recording,
@@ -10,8 +10,9 @@ Run the `MUA_STA_RFs_exec.py` to:
 
 NB software: 
 1- you should have python 3 or above. 
-2- you probably should probe all of your scripts before recording day: we can provide a "schoolbook example" of a short Neuropixel recording (5 Go) to troubleshoot your system.
+2- you should probe all of your scripts before recording day, we can provide a "schoolbook example" of a short Neuropixel recording (5 Go) to troubleshoot your system.
 
 NB hardware:
-1- You should probably have python viewer to exposed the sparse noise in a reliable way: make sure you exposed one image every 50ms to spare time.
-2- it is expected that you record your digital input into an additional NI-DAQ plugged onto your Neuropixel recording system, synchronization between both card is included in our pipeline. If required the script can also work with a direct input of the TTL into the digital input in the front of the neuropixel recording card.
+1- You should have pylon viewer (or any equivalent) to exposed the sparse noise in a reliable way: make sure you exposed one image every 50 ms to spare time.
+2- it is expected that you record your digital input into an additional NI-DAQ plugged onto your Neuropixel recording system. When doing so a synchronization between both card is required (included in our pipeline). For this options a second synchronizing TTL (from the Neuropixel card into the NI-DAQ card in the NI-PXIe will become the "syncrhonizing TTL").
+If required the script can also work with simpler version wia a direct input of the "visual stimulus TTL" should be plugged into the digital input in the front of the neuropixel recording card.
