@@ -14,5 +14,4 @@ NB software:
 
 NB hardware:
 1- You should have pylon viewer (or any equivalent) to exposed the sparse noise in a reliable way: make sure you exposed one image every 50 ms to spare time.
-2- it is expected that you record your digital input into an additional NI-DAQ plugged onto your Neuropixel recording system. When doing so a synchronization between both card is required (included in our pipeline). For this options a second synchronizing TTL (from the Neuropixel card into the NI-DAQ card in the NI-PXIe will become the "syncrhonizing TTL").
-If required the script can also work with simpler version wia a direct input of the "visual stimulus TTL" should be plugged into the digital input in the front of the neuropixel recording card.
+2- Your TTL should be recorded into an additional NI-DAQ plugged onto your Neuropixel recording system. When doing so an extra synchronization between both card will be is required before which is included in our repo. For this options a second synchronizing TTL from the Neuropixel card into the NI-DAQ card in the NI-PXIe will become the "syncrhonizing TTL".
