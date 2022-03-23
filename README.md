@@ -9,9 +9,9 @@ Run the `MUA_STA_RFs_exec.py` to:
 
 
 NB software: 
-1- you should have python 3 or above. 
+1- you should have python 3 or above. /%
 2- you should probe all of your scripts before recording day, we can provide a "schoolbook example" of a short Neuropixel recording (5 Go) to troubleshoot your system.
 
 NB hardware:
-1- You should have pylon viewer (or any equivalent) to exposed the sparse noise in a reliable way: make sure you exposed one image every 50 ms to spare time.
+1- You should have pylon viewer (or any equivalent) to exposed the sparse noise in a reliable way: make sure you exposed one image every 50 ms to spare time./%
 2- Your TTL should be recorded into an additional NI-DAQ plugged onto your Neuropixel recording system. When doing so an extra synchronization between both card will be is required before which is included in our repo. For this options a second synchronizing TTL from the Neuropixel card into the NI-DAQ card in the NI-PXIe will become the "syncrhonizing TTL".
