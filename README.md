@@ -9,9 +9,9 @@ Run the `MUA_STA_RFs_exec.py` to:
 
 
 NB software: 
-1- you should have python 3 or above.
-2- you should probe all of your scripts before recording day, we can provide a "schoolbook example" of a short Neuropixel recording (5 Go) to troubleshoot your system.
+1. you should have python 3 or above.
+2. you should probe all of your scripts before recording day, we can provide a "schoolbook example" of a short Neuropixel recording (5 Go) to troubleshoot your system.
 
 NB hardware:
-1- You should have pylon viewer (or any equivalent) to exposed the sparse noise in a reliable way. Make sure you exposed one image every 50 ms to spare time but also make sure you have matching number of TTLs between the stimulation matrice and the analyzed TTLs.
-2- This script goes with two hardware options: the simpler options 1 for the script in its current state: the Stim TTL should simply be plugged into the front digital inputs of your Neuropixels card. The option 2 is possible if your have an additional NI-DAQ inputs in your NI-PXIe where your TTL should be recorded into the digital inputs number 3 (or change the "event_keys "frametimes" to your digital inputs). When using such an hardware settings an extra synchronization step between both card will be is required which will be activated by the options ('align_to_probe_timestamps=True' + write in your probe TTLs directors in "probe_ttl_dir="). 
+1. You should have pylon viewer (or any equivalent) to exposed the sparse noise in a reliable way. Make sure you exposed one image every 50 ms to spare time but also make sure you have matching number of TTLs between the stimulation matrice and the analyzed TTLs.
+2. This script goes with two hardware options: the simpler options 1 for the script in its current state: the Stim TTL should simply be plugged into the front digital inputs of your Neuropixels card. The option 2 is possible if your have an additional NI-DAQ inputs in your NI-PXIe where your TTL should be recorded into the digital inputs number 3 (or change the "event_keys "frametimes" to your digital inputs). When using such an hardware settings an extra synchronization step between both card will be is required which will be activated by the options ('align_to_probe_timestamps=True' + write in your probe TTLs directors in "probe_ttl_dir="). 
