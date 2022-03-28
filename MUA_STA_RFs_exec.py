@@ -14,9 +14,10 @@ from MUA_STA_RFs import *
 
 #%% Parameters
 
-stim_ttl_dir = "/media/kailun/kailun_sata_inte/neuropix-data/2019-07-03_16-11-32/experiment1/recording1/events/Neuropix-PXI-100.0/TTL_1"
-raw_data_dir = "/media/kailun/kailun_sata_inte/neuropix-data/2019-07-03_16-11-32/experiment1/recording1/continuous/Neuropix-PXI-100.0"
-save_dir = "/home/kailun/Desktop/tangential_recording"
+stim_ttl_dir = "/home/kailun/Desktop/PhD/other_projects/tangential_recording/example_data/2021-10-22_15-59-48-20220323T103854Z-001/2021-10-22_15-59-48/Record Node 104/experiment1/recording1/events/NI-DAQmx-103.0/TTL_1"
+raw_data_dir = "/home/kailun/Desktop/PhD/other_projects/tangential_recording/example_data/2021-10-22_15-59-48-20220323T103854Z-001/2021-10-22_15-59-48/Record Node 101/experiment1/recording1/continuous/Neuropix-PXI-100.0"
+probe_ttl_dir = "/home/kailun/Desktop/PhD/other_projects/tangential_recording/example_data/2021-10-22_15-59-48-20220323T103854Z-001/2021-10-22_15-59-48/Record Node 101/experiment1/recording1/events/Neuropix-PXI-100.0/TTL_1"
+save_dir = "/home/kailun/Desktop/PhD/other_projects/tangential_recording/example_data/test_outputs"
 stimulus_path = "/media/kailun/kailun_sata_inte/VisualStimuli/stimuli/locally_light_sparse_noise_36_22_target_size_3_targets_per_frame_2_trials_10_background_0.0_20181120.npy"
 stimulus_data = np.load(stimulus_path, allow_pickle=True).item()
 sparse_noise_stim = stimulus_data["frames"].astype(float)  # Sparse noise stimuli with shape = (ny, nx, nframes).
@@ -43,10 +44,10 @@ pix_data = extract_NP_MUA(
         (4, "stops"),
     ],  # List containing tuples of channel states (int) and their corresponding TTL keys.
     slice_len=None,  # int, the length (in second) for slicing the data, in case the data size is too big.
-    align_to_probe_timestamps=False,  # If True, the stim TTLs in stim_ttl_dir will be aligned to NP probe timestamps (sync TTLs in probe_ttl_dir).
+    align_to_probe_timestamps=True,  # If True, the stim TTLs in stim_ttl_dir will be aligned to NP probe timestamps (sync TTLs in probe_ttl_dir).
     stim_sync_ch=1,  # The channel state for the sync channel of the stimulus TTLs.
     probe_sync_ch=1,  # The channel state for the sync channel of the probe TTLs.
-    probe_ttl_dir="",  # The folder path of the probe TTLs.
+    probe_ttl_dir=probe_ttl_dir,  # The folder path of the probe TTLs.
     n_cores=int(mp.cpu_count() / 2)  # The number of CPUs to be used for parallel computing. Spare some CPUs so that the computer is not slowed down for other processes.
 )
 
@@ -65,7 +66,9 @@ RF_overview_fig = plot_RF_overview(
         psth_start_sec=-0.1, 
         psth_end_sec=0.3, 
         psth_interv_sec=0.01, 
+        stim_startEnd_sec=(0.,0.1),
         RF_contour_lvl=0.5, 
+        SNR_thresh=0.3,
         sampling_rate=pix_data._sampling_rate,
         figsize=(15,10),
         psth_tick_interv=20,
