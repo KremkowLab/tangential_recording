@@ -313,8 +313,10 @@ def plot_RF_overview(
     frametimes, 
     psth_start_sec, 
     psth_end_sec, 
-    psth_interv_sec, 
+    psth_interv_sec,
+    stim_startEnd_sec,
     RF_contour_lvl, 
+    SNR_thresh=0.,
     sampling_rate=30000,
     figsize=(10,5),
     psth_tick_interv=10,
@@ -333,8 +335,12 @@ def plot_RF_overview(
         The stimulus timestamps/TTLs for the locally sparse noise frames.
     psth_start_sec, psth_end_sec, psth_interv_sec : float
         The start, end, and interval for the PSTH bins in second.
+    stim_startEnd_sec : tuple or list
+        The start and end of a stimulus frame in second.
     RF_contour_lvl : float
         The RF contour level to be plotted.
+    SNR_thresh : float
+        The SNR threshold for plotting the RF contours.
     sampling_rate : int or float
         The Neuropixels' sampling rate in Hz.
     psth_tick_interv : int
@@ -359,11 +365,60 @@ def plot_RF_overview(
     ax1.set_title("Max RF pixel PSTHs")
     
     plt.sca(ax2)
-    for RF in RFs:
-        plt.contour(RF, [RF_contour_lvl])
+    stim_mask = get_stim_mask(psth_range[:-1], np.array(stim_startEnd_sec)*sampling_rate)
+    SNR = get_PSTH_SNR(maxRFpsths, stim_mask)
+    for r, RF in enumerate(RFs):
+        if SNR[r] >= SNR_thresh:
+            plt.contour(RF, [RF_contour_lvl])
     ax2.set_aspect("equal")
     ax2.set_title("RF contours")
     return fig
+
+
+def get_PSTH_SNR(PSTHs, stim_mask):
+    """To compute the SNR for a list of PSTHs given a stimulus mask.
+    PARAMETERS
+    ----------
+    PSTHs : array-like, 2D
+        The PSTHs to be used. Shape = (nCh, n_psth_bins).
+    stim_mask : array-like, 1D
+        The boolean mask indicating the stimulus time points/bins.
+    
+    RETURN
+    ------
+    SNR_norm : array-like, 1D
+        The normalized SNR for each PSTH.
+    """
+    signal = (PSTHs*stim_mask).sum(-1) / stim_mask.sum()
+    noise = (PSTHs*~stim_mask).sum(-1) / (~stim_mask).sum()
+    if sum(noise==0) > 0:
+        min_noise = PSTHs.mean() / 10
+        PSTHs_tmp = PSTHs + min_noise
+        signal = (PSTHs_tmp*stim_mask).sum(-1) / stim_mask.sum()
+        noise = (PSTHs_tmp*~stim_mask).sum(-1) / (~stim_mask).sum()
+    SNR = signal / noise
+    SNR_norm = SNR / SNR.max()
+    return SNR_norm
+
+
+def get_stim_mask(time_points, stim_startEnd):
+    """To get the mask for stimulus given a time series, the stimulus duration 
+    and the time points given have to be in same unit.
+    PARAMETERS
+    ----------
+    time_points : array-like, 1D
+        The series of time points of interest.
+    stim_startEnd : tuple or list
+        The stimulus start and end times with unit same as time_points.
+    
+    RETURN
+    ------
+    stim_mask : array-like, 1D
+        The boolean mask indicating the stimulus time points.
+    """
+    stim_start, stim_end = stim_startEnd
+    stim_mask = (time_points>=stim_start) & (time_points<stim_end)
+    return stim_mask
 
 
 def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range):
