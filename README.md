@@ -14,7 +14,7 @@ Run the `MUA_STA_RFs_exec.py` to:
 **Hardware:**  
 To ensure proper alignment of the recorded neuronal activity to the timing of the visual stimulus frames, each frame of the stimulus matrix should be paired with a stimulus TTL.
 1. *Display of the visual stimuli:*  
-install the PsychoPy toolbox and make sure that the numbers of the stimulus frames and the produced TTLs are matched. 
+install the PsychoPy toolbox and make sure that the numbers of the stimulus frames and the obtained stimulus TTLs are matching. 
 2. *Hardware options:* 
     1. Simply plug the stimulus TTL cable into the front digital inputs of your Neuropixels card. Use `align_to_probe_timestamps=False` in the script.
     2. With additional NI-DAQ inputs in the NI-PXIe, an extra synchronization step between the two cards is required. In the script, simply use `align_to_probe_timestamps=True` and specify the probe event TTLs directory as `probe_ttl_dir`.
