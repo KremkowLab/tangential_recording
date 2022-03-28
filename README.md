@@ -12,7 +12,7 @@ Run the `MUA_STA_RFs_exec.py` to:
 2. An example of a short Neuropixels recording (5 GB) is provided as a reference for calibration purposes.
 
 **Hardware:**  
-To ensure proper alignment of the recorded neuronal activity to the timing of the visual stimulus frames, each frame of the stimulus matrix should be paired with a timestamp (TTL).
+To ensure proper alignment of the recorded neuronal activity to the timing of the visual stimulus frames, each frame of the stimulus matrix should be paired with a stimulus TTL.
 1. *Display of the visual stimuli:*  
 install the PsychoPy toolbox and make sure that the numbers of the stimulus frames and the produced TTLs are matched. 
 2. *Hardware options:* 
