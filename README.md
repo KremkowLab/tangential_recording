@@ -16,5 +16,6 @@ To ensure proper alignment of the recorded neuronal activity to the timing of th
 1. *Display of the visual stimuli:*  
 install the PsychoPy toolbox and make sure that the numbers of the stimulus frames and the produced TTLs are matched. 
 2. *Hardware options:* 
-    1. for the script in its current state: the Stim TTL should simply be plugged into the front digital inputs of your Neuropixels card. 
-    2. With additional NI-DAQ inputs in your NI-PXIe where your TTL should be recorded into the digital inputs number 3 (or change the "event_keys "frametimes" to your digital inputs). When using such an hardware settings an extra synchronization step between both card will be is required which will be activated by the options (`align_to_probe_timestamps=True` + write in your probe TTLs directors in "probe_ttl_dir="). 
+    1. Simply plug the stimulus TTL cable into the front digital inputs of your Neuropixels card. Use `align_to_probe_timestamps=False` in the script.
+    2. With additional NI-DAQ inputs in the NI-PXIe, an extra synchronization step between the two cards is required. In the script, simply use `align_to_probe_timestamps=True` and specify the probe event TTLs directory as `probe_ttl_dir`.
+3. Ensure that the hardware's digital input number `d` used for recording the stimulus TTLs matches the `"frametimes"`'s `channel state` of the `event_keys` in the script.
