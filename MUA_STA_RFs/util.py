@@ -317,6 +317,7 @@ def plot_RF_overview(
     stim_startEnd_sec,
     RF_contour_lvl, 
     SNR_thresh=0.,
+    resp_thresh=0.,
     sampling_rate=30000,
     figsize=(10,5),
     psth_tick_interv=10,
@@ -339,8 +340,8 @@ def plot_RF_overview(
         The start and end of a stimulus frame in second.
     RF_contour_lvl : float
         The RF contour level to be plotted.
-    SNR_thresh : float
-        The SNR threshold for plotting the RF contours.
+    SNR_thresh, resp_thresh : float
+        The SNR and response thresholds for plotting the RF contours.
     sampling_rate : int or float
         The Neuropixels' sampling rate in Hz.
     psth_tick_interv : int
@@ -368,7 +369,9 @@ def plot_RF_overview(
     stim_mask = get_stim_mask(psth_range[:-1], np.array(stim_startEnd_sec)*sampling_rate)
     SNR = get_PSTH_SNR(maxRFpsths, stim_mask)
     for r, RF in enumerate(RFs):
-        if SNR[r] >= SNR_thresh:
+        has_high_SNR = SNR[r] >= SNR_thresh
+        has_decent_response = maxRFpsths[r].max() >= (resp_thresh*maxRFpsths.max())
+        if has_high_SNR and has_decent_response:
             plt.contour(RF, [RF_contour_lvl])
     ax2.set_aspect("equal")
     ax2.set_title("RF contours")
