@@ -316,6 +316,7 @@ def plot_RF_overview(
     psth_interv_sec,
     stim_startEnd_sec,
     RF_contour_lvl, 
+    target_LSN_stim=1,
     SNR_thresh=0.,
     resp_thresh=0.,
     sampling_rate=30000,
@@ -340,6 +341,8 @@ def plot_RF_overview(
         The start and end of a stimulus frame in second.
     RF_contour_lvl : float
         The RF contour level to be plotted.
+    target_LSN_stim : int or float
+        The target stimulus in the sparse-noise-stimulus matrix.
     SNR_thresh, resp_thresh : float
         The SNR and response thresholds for plotting the RF contours.
     sampling_rate : int or float
@@ -354,7 +357,8 @@ def plot_RF_overview(
     """
     psth_range_sec = np.arange(psth_start_sec, psth_end_sec, psth_interv_sec)
     psth_range = psth_range_sec * sampling_rate
-    maxRFpsths = get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range)
+    maxRFpsths = get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, 
+                                     psth_range, target_LSN_stim)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
     
     ax1.imshow(maxRFpsths, cmap="magma")
@@ -424,7 +428,8 @@ def get_stim_mask(time_points, stim_startEnd):
     return stim_mask
 
 
-def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range):
+def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range, 
+                        target_stim=1):
     """To compute the PSTH of the max STA RF pixel for all channels.
     PARAMETERS
     ----------
@@ -439,6 +444,8 @@ def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range):
         The stimulus timestamps/TTLs for the locally sparse noise frames.
     psth_range : array-like, 1D
         The bins for computing the PSTH. Length = n_psth_bins.
+    target_stim : int or float
+        The target stimulus in the stimulus matrix.
     
     RETURN
     ------
@@ -450,7 +457,7 @@ def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range):
     for ch, RF in enumerate(RFs):
         idx = np.argmax(np.abs(RF))
         y, x = np.unravel_index(idx, RF.shape)
-        triggers, = np.where(stimulus[y, x, :])
+        triggers, = np.where(stimulus[y, x, :]==target_stim)
         ft = frametimes[triggers]
         st = spiketimes[st_keys[ch]]
         psths[ch] = calc_psth(st, ft, psth_range)
