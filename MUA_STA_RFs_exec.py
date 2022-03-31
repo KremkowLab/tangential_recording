@@ -53,8 +53,10 @@ pix_data = extract_NP_MUA(
 
 #%% Compute STA and plot the RFs
 
-spiketimes = np.load(os.path.join(save_dir, pix_data.spiketimes_fname), encoding='latin1', allow_pickle=True).item()
-frametimes_dict = np.load(os.path.join(save_dir, pix_data.stim_ttl_fname), encoding='latin1', allow_pickle=True).item()
+st_filename = pix_data.spiketimes_fname   # Or "spiketimes.npy" or any other name of the file that contains the spiketimes dictionary
+ttl_filename = pix_data.stim_ttl_fname   # Or "stim_TTLs.npy" or any other name of the file that contains the stimulus TTLs dictionary
+spiketimes = np.load(os.path.join(save_dir, st_filename), encoding='latin1', allow_pickle=True).item()
+frametimes_dict = np.load(os.path.join(save_dir, ttl_filename), encoding='latin1', allow_pickle=True).item()
 LSN_frametimes = frametimes_dict["frametimes"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
 STA = get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
 STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
@@ -62,15 +64,15 @@ RF_overview_fig = plot_RF_overview(
         STA.STA_RFs, 
         sparse_noise_stim, 
         spiketimes, 
-        LSN_frametimes, 
-        psth_start_sec=-0.1, 
-        psth_end_sec=0.3, 
-        psth_interv_sec=0.01, 
-        stim_startEnd_sec=(0.1,0.3),
+        LSN_frametimes,  # The timestamps of the sparse noise stimuli
+        psth_start_sec=-0.1,  # the start time of the PSTH in second
+        psth_end_sec=0.3,  # the stop time of the PSTH in second
+        psth_interv_sec=0.01,  # the bin size of the PSTH in second
+        stim_startEnd_sec=(0.1,0.3),  # the start and stop times of the stimulus in second for computing the SNR, can visually inspect the PSTH responses for better plotting of RF contours
         RF_contour_lvl=0.5, 
-        SNR_thresh=0.2,
-        resp_thresh=0.3,
-        sampling_rate=pix_data._sampling_rate,
+        SNR_thresh=0.2,  # The SNR threshold for plotting the RF contours. The RF contours that have PSTH with SNR lower than this threshold will not be plotted.
+        resp_thresh=0.3,  # The response threshold relative to the max PSTH response for plotting the RF contours
+        sampling_rate=pix_data._sampling_rate,  # The sampling rate of the data acquisition devices. 30000 for Neuropixels.
         figsize=(15,10),
         psth_tick_interv=20,
 )
