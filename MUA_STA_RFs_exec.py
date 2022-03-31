@@ -19,7 +19,7 @@ raw_data_dir = "/media/kailun/kailun_sata_inte/PhD/other_projects/tangential_rec
 probe_ttl_dir = ""
 save_dir = "/media/kailun/kailun_sata_inte/PhD/other_projects/tangential_recording/example_data/test_outputs"
 stimulus_path = "/media/kailun/kailun_sata_inte/VisualStimuli/stimuli/locally_light_sparse_noise_36_22_target_size_3_targets_per_frame_2_trials_10_background_0.0_20181120.npy"
-stimulus_data = np.load(stimulus_path, allow_pickle=True).item()
+stimulus_data = np.load(stimulus_path, encoding='latin1', allow_pickle=True).item()
 sparse_noise_stim = stimulus_data["frames"].astype(float)  # Sparse noise stimuli with shape = (ny, nx, nframes).
 STA_lags = np.arange(-7, 3)  # The range of lags for computing STA.
 subplots_rc = (24, 16)  # (nrows, ncols) or None. The number of rows and columns for the RF subplots.
@@ -53,8 +53,8 @@ pix_data = extract_NP_MUA(
 
 #%% Compute STA and plot the RFs
 
-spiketimes = np.load(os.path.join(save_dir, pix_data.spiketimes_fname), allow_pickle=True).item()
-frametimes_dict = np.load(os.path.join(save_dir, pix_data.stim_ttl_fname), allow_pickle=True).item()
+spiketimes = np.load(os.path.join(save_dir, pix_data.spiketimes_fname),  encoding='latin1', allow_pickle=True).item()
+frametimes_dict = np.load(os.path.join(save_dir, pix_data.stim_ttl_fname),  encoding='latin1', allow_pickle=True).item()
 LSN_frametimes = frametimes_dict["frametimes"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
 STA = get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
 STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
