@@ -62,7 +62,7 @@ STA = get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
 STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
 RF_overview_fig = plot_RF_overview(
         STA.STA_RFs, 
-        sparse_noise_stim, 
+        sparse_noise_stim,  # Shape = (ny, nx, nframes)
         spiketimes, 
         LSN_frametimes,  # The timestamps of the sparse noise stimuli
         psth_start_sec=-0.1,  # the start time of the PSTH in second
@@ -70,6 +70,7 @@ RF_overview_fig = plot_RF_overview(
         psth_interv_sec=0.01,  # the bin size of the PSTH in second
         stim_startEnd_sec=(0.1,0.3),  # the start and stop times of the stimulus in second for computing the SNR, can visually inspect the PSTH responses for better plotting of RF contours
         RF_contour_lvl=0.5, 
+        target_LSN_stim=1,
         SNR_thresh=0.2,  # The SNR threshold for plotting the RF contours. The RF contours that have PSTH with SNR lower than this threshold will not be plotted.
         resp_thresh=0.3,  # The response threshold relative to the max PSTH response for plotting the RF contours
         sampling_rate=pix_data._sampling_rate,  # The sampling rate of the data acquisition devices. 30000 for Neuropixels.
