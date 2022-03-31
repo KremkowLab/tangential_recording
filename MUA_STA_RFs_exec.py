@@ -53,8 +53,8 @@ pix_data = extract_NP_MUA(
 
 #%% Compute STA and plot the RFs
 
-spiketimes = np.load(os.path.join(save_dir, pix_data.spiketimes_fname),  encoding='latin1', allow_pickle=True).item()
-frametimes_dict = np.load(os.path.join(save_dir, pix_data.stim_ttl_fname),  encoding='latin1', allow_pickle=True).item()
+spiketimes = np.load(os.path.join(save_dir, pix_data.spiketimes_fname), encoding='latin1', allow_pickle=True).item()
+frametimes_dict = np.load(os.path.join(save_dir, pix_data.stim_ttl_fname), encoding='latin1', allow_pickle=True).item()
 LSN_frametimes = frametimes_dict["frametimes"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
 STA = get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
 STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
