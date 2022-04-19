@@ -130,14 +130,14 @@ def basic_peak_detector(sig, orientation="negative", thresh=-3.5, verbose=False)
         The index (spiketimes) where spike events occur.
     """
     orientation = orientation.lower()
-    if orientation != "positive":
+    if orientation.lower() != "positive":
         sig0_neg = sig[0:-2]
         sig1_neg = sig[1:-1]
         sig2_neg = sig[2:]
         (peak_ind_neg,) = np.nonzero(
             (sig1_neg <= sig0_neg) & (sig1_neg < sig2_neg) & (sig1_neg < thresh)
         )
-    if orientation != "negative":
+    if orientation.lower() != "negative":
         sig_inv = sig * -1
         sig0_pos = sig_inv[0:-2]
         sig1_pos = sig_inv[1:-1]
@@ -145,16 +145,16 @@ def basic_peak_detector(sig, orientation="negative", thresh=-3.5, verbose=False)
         (peak_ind_pos,) = np.nonzero(
             (sig1_pos <= sig0_pos) & (sig1_pos < sig2_pos) & (sig1_pos < thresh)
         )
-    if orientation == "both":
+    if orientation.lower() == "both":
         peak_ind_neg = np.array([peak_ind_neg])
         peak_ind_pos = np.array([peak_ind_pos])
         peak_ind = np.concatenate((peak_ind_neg.ravel(), peak_ind_pos.ravel()), axis=0)
         peak_ind = np.sort(peak_ind)
     ind = (
         peak_ind
-        if orientation == "both"
+        if orientation.lower() == "both"
         else peak_ind_pos
-        if orientation == "positive"
+        if orientation.lower() == "positive"
         else peak_ind_neg
     )
     if verbose:
