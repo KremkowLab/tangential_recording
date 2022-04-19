@@ -20,7 +20,7 @@ class extract_NP_MUA:
     _butter_bandpass_order = 2  # the order for the Butterworth bandpass filter
     _sampling_rate = 30000  # the sampling rate of the Neuropixels probe
     _signal_orientation = (
-        "negative"  # 'positive' or 'negative', the signal orientation for processing
+        "negative"  # 'positive', 'negative', or 'both', the signal orientation for processing
     )
 
     def __init__(
