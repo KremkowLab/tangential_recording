@@ -21,4 +21,4 @@ install the PsychoPy toolbox and make sure that the numbers of the stimulus fram
 
 *Make sure that the NI-DAQ hardware's digital input number `d` used for the stimulus TTLs matches the `channel state` of the `event_keys` named `"frametimes"` in the script.*
 
-A test recording is available under the following link: https://zenodo.org/record/6850116#.YtQNq4RBzQM
+A test recording is available in: https://zenodo.org/record/6850116#.YtQNq4RBzQM
