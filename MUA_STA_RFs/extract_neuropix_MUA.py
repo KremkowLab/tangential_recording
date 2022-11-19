@@ -39,6 +39,7 @@ class extract_NP_MUA:
         stim_sync_ch=1,
         probe_sync_ch=1,
         probe_ttl_dir="",
+        chState_filename="channel_states.npy",
         n_cores=mp.cpu_count(),
     ):
         """To extract the TTLs/timestamps and MUA from raw Neuropixels data.
@@ -97,6 +98,7 @@ class extract_NP_MUA:
         self.stim_sync_ch = stim_sync_ch
         self.probe_sync_ch = probe_sync_ch
         self.probe_ttl_dir = probe_ttl_dir
+        self.chState_filename = chState_filename
         if self.align_to_probe_timestamps:
             # stim_ttl_dir is changed to a new stim_ttl_dir that contains the aligned TTLs
             self.stim_ttl_dir = align_and_save_timestamps(
@@ -104,6 +106,7 @@ class extract_NP_MUA:
                 self.probe_sync_ch,
                 self.stim_ttl_dir,
                 self.probe_ttl_dir,
+                self.chState_filename,
             )
             print("The aligned stimulus TTL folder is {}.".format(self.stim_ttl_dir))
         self._n_cores = max(1, n_cores)
@@ -124,6 +127,8 @@ class extract_NP_MUA:
 
     def _extract(self):
         """To extract the stimulus TTLs/timestamps and spike times (MUA)."""
+        self.stim_timestamps, self.raw_data_timestamps = standardize_timestamps(
+                [self.stim_ttl_dir, self.raw_data_dir], self._sampling_rate)
         if not os.path.exists(os.path.join(self.save_dir, self.stim_ttl_fname)):
             self._get_stim_ttl()
             self.save(self.stim_ttl_dict, self.stim_ttl_fname)
@@ -139,10 +144,9 @@ class extract_NP_MUA:
     def _get_stim_ttl(self):
         """To get the stimulus TTLs/timestamps."""
         self.stim_ttl_dict = {}
-        channel_states = np.load(os.path.join(self.stim_ttl_dir, "channel_states.npy"))
-        timestamps = np.load(os.path.join(self.stim_ttl_dir, "timestamps.npy"))
+        channel_states = np.load(os.path.join(self.stim_ttl_dir, self.chState_filename))
         for ch, key in self.event_keys:
-            ch_timestamps = timestamps[channel_states == ch]
+            ch_timestamps = self.stim_timestamps[channel_states == ch]
             start_t = self.extract_start_time if self.extract_start_time else 0
             if self.extract_stop_time:
                 self.stim_ttl_dict[key] = ch_timestamps[
@@ -205,9 +209,6 @@ class extract_NP_MUA:
 
     def _get_raw_data(self):
         """To get the raw_data_timestamps and raw_data."""
-        self.raw_data_timestamps = np.load(
-            os.path.join(self.raw_data_dir, "timestamps.npy")
-        )
         cur_data_path = os.path.join(self.raw_data_dir, "continuous.dat")
         self.raw_data = np.memmap(cur_data_path, dtype=np.int16, mode="r")
         self.raw_data = self.raw_data.reshape((self.total_ch, -1), order="F")

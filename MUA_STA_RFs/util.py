@@ -50,7 +50,7 @@ def get_rawdata_timestamps_info(timestamps):
     start_time : int
         The start time of the raw data recording.
     total_timestamp_len : array-like, 1d
-        The length of the data recoring in unit time.
+        The length of the data recording in unit time.
     """
     timestamps_len = timestamps.shape[0]
     start_time = timestamps[0]
@@ -211,7 +211,7 @@ def filter_detect(
     return spiketimes_tmp
 
 
-def get_timestamps(ttl_dir, target_channel):
+def get_timestamps(ttl_dir, target_channel, chState_fname="channel_states.npy"):
     """To get the target timestamps given its channel state.
     PARAMETERS
     ----------
@@ -227,7 +227,7 @@ def get_timestamps(ttl_dir, target_channel):
     all_timestamps : array-like, 1d
         All timestamps in the ttl_dir.
     """
-    channel_states = np.load(os.path.join(ttl_dir, "channel_states.npy"))
+    channel_states = np.load(os.path.join(ttl_dir, chState_fname))
     all_timestamps = np.load(os.path.join(ttl_dir, "timestamps.npy"))
     target_timestamps = all_timestamps[channel_states == target_channel]
     return target_timestamps, all_timestamps
@@ -266,12 +266,13 @@ def align_timestamps(timestamps, timestamps_sync, reference_sync, verbose=False)
     dt = timestamps_sync - reference_sync
     func_dt = interpolate.interp1d(timestamps_sync, dt, fill_value="extrapolate")
     timestamps_aligned = timestamps - func_dt(timestamps)
-    timestamps_aligned = np.round(timestamps_aligned).astype(int)
+    if timestamps.dtype in [int, np.int64]:
+        timestamps_aligned = np.round(timestamps_aligned).astype(np.int64)
     return timestamps_aligned
 
 
 def align_and_save_timestamps(
-    to_be_aligned_sync_ch, ref_sync_ch, to_be_aligned_ttl_dir, ref_ttl_dir
+    to_be_aligned_sync_ch, ref_sync_ch, to_be_aligned_ttl_dir, ref_ttl_dir, chState_fname
 ):
     """To align the given timestamps to the referece timestamps.
     PARAMETERS
@@ -294,16 +295,32 @@ def align_and_save_timestamps(
         in to_be_aligned_ttl_dir.
     """
     timestamps_sync, timestamps = get_timestamps(
-        to_be_aligned_ttl_dir, to_be_aligned_sync_ch
+        to_be_aligned_ttl_dir, to_be_aligned_sync_ch, chState_fname
     )
-    reference_sync, timestamps_ref = get_timestamps(ref_ttl_dir, ref_sync_ch)
+    reference_sync, timestamps_ref = get_timestamps(ref_ttl_dir, ref_sync_ch, chState_fname)
     new_ttl_dir = to_be_aligned_ttl_dir + "_aligned"
     if not os.path.exists(new_ttl_dir):
         os.makedirs(new_ttl_dir)
     timestamps_aligned = align_timestamps(timestamps, timestamps_sync, reference_sync)
     np.save(os.path.join(new_ttl_dir, "timestamps.npy"), timestamps_aligned)
-    shutil.copy(os.path.join(to_be_aligned_ttl_dir, "channel_states.npy"), new_ttl_dir)
+    shutil.copy(os.path.join(to_be_aligned_ttl_dir, chState_fname), new_ttl_dir)
     return new_ttl_dir
+
+
+def standardize_timestamps(timestamps_dirs, sampling_rate):
+    """To make the timestamps into (non-negative) unit time, if the timestamps 
+    are in second (when the timestamps are float).
+    """
+    all_timestamps = []
+    for t_dir in timestamps_dirs:
+        timestamps = np.load(os.path.join(t_dir, "timestamps.npy"))
+        if timestamps.dtype not in [int, np.int64]:   # dtype is float, in second
+            timestamps = np.round(timestamps * sampling_rate).astype(np.int64)
+        all_timestamps.append(timestamps)
+    timestamps_mins = [ts.min() for ts in all_timestamps]
+    time_min_overall = min(timestamps_mins)
+    nonNeg_timestamps_all = [ts - time_min_overall for ts in all_timestamps]
+    return nonNeg_timestamps_all
 
 
 def plot_RF_overview(
