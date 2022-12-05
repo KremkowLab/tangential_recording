@@ -211,12 +211,27 @@ def filter_detect(
     return spiketimes_tmp
 
 
-def get_timestamps(ttl_dir, target_channel, chState_fname="channel_states.npy"):
+def getLatestFilePath(folder, files):
+    """
+    files : List of the files from the latest to the oldest.
+    """
+    latestPath = None
+    for file in files:
+        curPath = os.path.join(folder, file)
+        if os.path.exists(curPath):
+            latestPath = curPath
+            break
+    if latestPath is None:
+        raise ValueError(f"No matching file in the folder {folder}.")
+    return latestPath
+
+
+def get_timestamps(timestamps_fpath, chState_fpath, target_channel):
     """To get the target timestamps given its channel state.
     PARAMETERS
     ----------
-    ttl_dir : str
-        The path to the folder containing the TTLs.
+    timestamps_fpath, chState_fpath : str
+        The filepaths for timestamps in unit time/sample numbers and channel states.
     target_channel : int
         The channel state of the target channel.
     
@@ -227,8 +242,8 @@ def get_timestamps(ttl_dir, target_channel, chState_fname="channel_states.npy"):
     all_timestamps : array-like, 1d
         All timestamps in the ttl_dir.
     """
-    channel_states = np.load(os.path.join(ttl_dir, chState_fname))
-    all_timestamps = np.load(os.path.join(ttl_dir, "timestamps.npy"))
+    all_timestamps = np.load(timestamps_fpath)
+    channel_states = np.load(chState_fpath)
     target_timestamps = all_timestamps[channel_states == target_channel]
     return target_timestamps, all_timestamps
 
@@ -272,7 +287,12 @@ def align_timestamps(timestamps, timestamps_sync, reference_sync, verbose=False)
 
 
 def align_and_save_timestamps(
-    to_be_aligned_sync_ch, ref_sync_ch, to_be_aligned_ttl_dir, ref_ttl_dir, chState_fname
+    to_be_aligned_sync_ch, 
+    ref_sync_ch, 
+    to_be_aligned_ttl_dir, 
+    ref_ttl_dir, 
+    chState_fname, 
+    unitTimestamps_fname
 ):
     """To align the given timestamps to the referece timestamps.
     PARAMETERS
@@ -287,6 +307,8 @@ def align_and_save_timestamps(
     ref_ttl_dir : str
         The path to folder containing the TTLs/timestamps as reference.
         E.g. the Neuropixel TTL folder (path until .../Neuropix-PXI-100.0/TTL_1).
+    chState_fname, unitTimestamps_fname : str
+        The filenames for channel states and timestamps in unit time/sample numbers.
 
     RETURN
     ------
@@ -294,33 +316,23 @@ def align_and_save_timestamps(
         The path to the folder containing aligned TTLs/timestamps for TTLs
         in to_be_aligned_ttl_dir.
     """
+    to_be_aligned_chState_fpath = os.path.join(to_be_aligned_ttl_dir, chState_fname)
+    to_be_aligned_timestamps_fpath = os.path.join(to_be_aligned_ttl_dir, unitTimestamps_fname)
+    ref_chState_fpath = os.path.join(ref_ttl_dir, chState_fname)
+    ref_timestamps_fpath = os.path.join(ref_ttl_dir, unitTimestamps_fname)
     timestamps_sync, timestamps = get_timestamps(
-        to_be_aligned_ttl_dir, to_be_aligned_sync_ch, chState_fname
+        to_be_aligned_timestamps_fpath, to_be_aligned_chState_fpath, to_be_aligned_sync_ch
     )
-    reference_sync, timestamps_ref = get_timestamps(ref_ttl_dir, ref_sync_ch, chState_fname)
+    reference_sync, timestamps_ref = get_timestamps(
+        ref_timestamps_fpath, ref_chState_fpath, ref_sync_ch
+    )
     new_ttl_dir = to_be_aligned_ttl_dir + "_aligned"
     if not os.path.exists(new_ttl_dir):
         os.makedirs(new_ttl_dir)
     timestamps_aligned = align_timestamps(timestamps, timestamps_sync, reference_sync)
-    np.save(os.path.join(new_ttl_dir, "timestamps.npy"), timestamps_aligned)
+    np.save(os.path.join(new_ttl_dir, unitTimestamps_fname), timestamps_aligned)
     shutil.copy(os.path.join(to_be_aligned_ttl_dir, chState_fname), new_ttl_dir)
     return new_ttl_dir
-
-
-def standardize_timestamps(timestamps_dirs, sampling_rate):
-    """To make the timestamps into (non-negative) unit time, if the timestamps 
-    are in second (when the timestamps are float).
-    """
-    all_timestamps = []
-    for t_dir in timestamps_dirs:
-        timestamps = np.load(os.path.join(t_dir, "timestamps.npy"))
-        if timestamps.dtype not in [int, np.int64]:   # dtype is float, in second
-            timestamps = np.round(timestamps * sampling_rate).astype(np.int64)
-        all_timestamps.append(timestamps)
-    timestamps_mins = [ts.min() for ts in all_timestamps]
-    time_min_overall = min(timestamps_mins)
-    nonNeg_timestamps_all = [ts - time_min_overall for ts in all_timestamps]
-    return nonNeg_timestamps_all
 
 
 def plot_RF_overview(
