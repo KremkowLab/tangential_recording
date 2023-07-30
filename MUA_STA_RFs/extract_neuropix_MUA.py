@@ -324,7 +324,8 @@ class extract_NP_MUA:
             )
             for ch in range(1, self.total_ch + 1)
         )
-        self.save(spiketimes_arr, "slice{}".format(slice_idx))
+        spiketimesDict = {i:arr for i, arr in enumerate(spiketimes_arr)}
+        self.save(spiketimesDict, "slice{}".format(slice_idx))
 
     def _save_spiketimes_dict(self, num_files):
         """Load saved spiketimes file of slices, put them in a dict, and save dict.
@@ -337,7 +338,7 @@ class extract_NP_MUA:
         self.st_dict = {ch: [] for ch in range(1, self.total_ch + 1)}
         for i in range(num_files):
             cur_file = os.path.join(self.save_dir, "slice{}.npy".format(i + 1))
-            st_arr = np.load(cur_file, allow_pickle=True)
+            st_arr = np.load(cur_file, allow_pickle=True).item()
             for ch in range(1, self.total_ch + 1):
                 self.st_dict[ch] = np.append(self.st_dict[ch], st_arr[ch - 1]).astype(
                     int
