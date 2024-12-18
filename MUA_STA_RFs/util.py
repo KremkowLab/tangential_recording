@@ -14,52 +14,9 @@ import os, shutil
 import matplotlib.pyplot as plt
 
 
-def get_action(message):
-    """To get the action for a situation whether to stop or continue (ignore the concern).
-    PARAMETERS
-    ----------
-    message : str
-        The message to be shown when certain situation happened.
-    """
-    print(message)
-    if py_ver()[0] == "2":
-        action = raw_input("Action (pass, stop): ")
-    elif py_ver()[0] == "3":
-        action = input("Action (pass, stop): ")
-    while action != "stop" and action != "pass":
-        print(message)
-        if py_ver()[0] == "2":
-            action = raw_input("Action (pass, stop): ")
-        elif py_ver()[0] == "3":
-            action = input("Action (pass, stop): ")
-    if action == "pass":
-        pass
-    elif action == "stop":
-        raise KeyboardInterrupt("Extraction terminated!")
-
-
-def get_rawdata_timestamps_info(timestamps):
-    """
-    PARAMETERS
-    ----------
-    timestamps : array-like, 1d
-        The timestamps of the raw data.
-    
-    RETURN
-    ------
-    start_time : int
-        The start time of the raw data recording.
-    total_timestamp_len : array-like, 1d
-        The length of the data recording in unit time.
-    """
-    timestamps_len = timestamps.shape[0]
-    start_time = timestamps[0]
-    time_diff = np.diff(timestamps)
-    (loss_time_idx,) = np.where(time_diff != 1)
-    loss_time_len = time_diff[loss_time_idx].sum() - loss_time_idx.size
-    total_timestamp_len = timestamps_len + loss_time_len
-    return start_time, total_timestamp_len
-
+# =============================================================================
+# Signal processing
+# =============================================================================
 
 def butter_bandpass(low_cut, high_cut, sampling_rate, order=2):
     """Butterworth bandpass filter from https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html
@@ -85,7 +42,6 @@ def butter_bandpass(low_cut, high_cut, sampling_rate, order=2):
     bandpassed_data = butter(order, [low, high], btype="band")
     return bandpassed_data
 
-
 def butter_bandpass_filter(data, low_cut, high_cut, sampling_rate, order=2):
     """To bandpass filter the given data with Butterworth filter.
     PARAMETERS
@@ -109,7 +65,6 @@ def butter_bandpass_filter(data, low_cut, high_cut, sampling_rate, order=2):
     b, a = butter_bandpass(low_cut, high_cut, sampling_rate, order)
     filt_data = filtfilt(b, a, data)
     return filt_data
-
 
 def basic_peak_detector(sig, orientation="negative", thresh=-3.5, verbose=False):
     """To detect spiking events.
@@ -164,7 +119,6 @@ def basic_peak_detector(sig, orientation="negative", thresh=-3.5, verbose=False)
     spike_event_ind = ind + 1
     return spike_event_ind
 
-
 def filter_detect(
     channel_data,
     start,
@@ -211,80 +165,9 @@ def filter_detect(
     return spiketimes_tmp
 
 
-def getLatestFilePath(folder, files):
-    """
-    files : List of the files from the latest to the oldest.
-    """
-    latestPath = None
-    for file in files:
-        curPath = os.path.join(folder, file)
-        if os.path.exists(curPath):
-            latestPath = curPath
-            break
-    if latestPath is None:
-        raise ValueError(f"No matching file in the folder {folder}.")
-    return latestPath
-
-
-def get_timestamps(timestamps_fpath, chState_fpath, target_channel):
-    """To get the target timestamps given its channel state.
-    PARAMETERS
-    ----------
-    timestamps_fpath, chState_fpath : str
-        The filepaths for timestamps in unit time/sample numbers and channel states.
-    target_channel : int
-        The channel state of the target channel.
-    
-    RETURN
-    ------
-    target_timestamps : array-like, 1d
-        The timestamps of the target_channel.
-    all_timestamps : array-like, 1d
-        All timestamps in the ttl_dir.
-    """
-    all_timestamps = np.load(timestamps_fpath)
-    channel_states = np.load(chState_fpath)
-    target_timestamps = all_timestamps[channel_states == target_channel]
-    return target_timestamps, all_timestamps
-
-
-def align_timestamps(timestamps, timestamps_sync, reference_sync, verbose=False):
-    """To align given TTLs/timestamps by aligning its sync TTLs to the reference sync TTLs.
-    E.g. align NIDAQ timestamps to Neuropixels probe (NP) timestamps.
-    PARAMETERS
-    ----------
-    timestamps : array-like, 1d
-        The TTLS/timestamps to be aligned, e.g. the NIDAQ TTL timestamps.
-    timestamp_sync : array-like, 1d
-        The sync TTLs of the timestamps to be aligned, e.g. NIDAQ sync.
-    reference_sync : array-like, 1d
-        The reference sync timestamps, e.g. NP sync.
-    verbose : bool
-        If True, the user will be notified if the timestamps_sync and the 
-        reference_sync do not have the same length.
-    
-    RETURN
-    ------
-    timestamps_aligned : array-like, 1d
-        The aligned timestamps for the given timestamps.
-    """
-    if len(timestamps_sync) != len(reference_sync):
-        if verbose:
-            print(
-                "The timestamps_sync ({}) and reference_sync ({}) do not have same length.".format(
-                    len(timestamps_sync), len(reference_sync)
-                )
-            )
-        min_len = min(len(timestamps_sync), len(reference_sync))
-        timestamps_sync = timestamps_sync[:min_len]
-        reference_sync = reference_sync[:min_len]
-    dt = timestamps_sync - reference_sync
-    func_dt = interpolate.interp1d(timestamps_sync, dt, fill_value="extrapolate")
-    timestamps_aligned = timestamps - func_dt(timestamps)
-    if timestamps.dtype in [int, np.int64]:
-        timestamps_aligned = np.round(timestamps_aligned).astype(np.int64)
-    return timestamps_aligned
-
+# =============================================================================
+# Timestamp alignment
+# =============================================================================
 
 def align_and_save_timestamps(
     to_be_aligned_sync_ch, 
@@ -334,6 +217,68 @@ def align_and_save_timestamps(
     shutil.copy(os.path.join(to_be_aligned_ttl_dir, chState_fname), new_ttl_dir)
     return new_ttl_dir
 
+def align_timestamps(timestamps, timestamps_sync, reference_sync, verbose=False):
+    """To align given TTLs/timestamps by aligning its sync TTLs to the reference sync TTLs.
+    E.g. align NIDAQ timestamps to Neuropixels probe (NP) timestamps.
+    PARAMETERS
+    ----------
+    timestamps : array-like, 1d
+        The TTLS/timestamps to be aligned, e.g. the NIDAQ TTL timestamps.
+    timestamp_sync : array-like, 1d
+        The sync TTLs of the timestamps to be aligned, e.g. NIDAQ sync.
+    reference_sync : array-like, 1d
+        The reference sync timestamps, e.g. NP sync.
+    verbose : bool
+        If True, the user will be notified if the timestamps_sync and the 
+        reference_sync do not have the same length.
+    
+    RETURN
+    ------
+    timestamps_aligned : array-like, 1d
+        The aligned timestamps for the given timestamps.
+    """
+    if len(timestamps_sync) != len(reference_sync):
+        if verbose:
+            print(
+                "The timestamps_sync ({}) and reference_sync ({}) do not have same length.".format(
+                    len(timestamps_sync), len(reference_sync)
+                )
+            )
+        min_len = min(len(timestamps_sync), len(reference_sync))
+        timestamps_sync = timestamps_sync[:min_len]
+        reference_sync = reference_sync[:min_len]
+    dt = timestamps_sync - reference_sync
+    func_dt = interpolate.interp1d(timestamps_sync, dt, fill_value="extrapolate")
+    timestamps_aligned = timestamps - func_dt(timestamps)
+    if timestamps.dtype in [int, np.int64]:
+        timestamps_aligned = np.round(timestamps_aligned).astype(np.int64)
+    return timestamps_aligned
+
+def get_timestamps(timestamps_fpath, chState_fpath, target_channel):
+    """To get the target timestamps given its channel state.
+    PARAMETERS
+    ----------
+    timestamps_fpath, chState_fpath : str
+        The filepaths for timestamps in unit time/sample numbers and channel states.
+    target_channel : int
+        The channel state of the target channel.
+    
+    RETURN
+    ------
+    target_timestamps : array-like, 1d
+        The timestamps of the target_channel.
+    all_timestamps : array-like, 1d
+        All timestamps in the ttl_dir.
+    """
+    all_timestamps = np.load(timestamps_fpath)
+    channel_states = np.load(chState_fpath)
+    target_timestamps = all_timestamps[channel_states == target_channel]
+    return target_timestamps, all_timestamps
+
+
+# =============================================================================
+# Analysis and plotting
+# =============================================================================
 
 def plot_RF_overview(
     RFs, 
@@ -384,18 +329,13 @@ def plot_RF_overview(
     fig : matplotlib object
         The figure containing the RFs' PSTH and RF contours for all channels.
     """
-    psth_range_sec = np.arange(psth_start_sec, psth_end_sec, psth_interv_sec)
-    psth_range = psth_range_sec * sampling_rate
+    psth_range_sec, psth_range = getPsthRange(
+        psth_start_sec, psth_end_sec, psth_interv_sec, sampling_rate)
     maxRFpsths = get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, 
                                      psth_range, target_LSN_stim)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
     
-    ax1.imshow(maxRFpsths, cmap="magma")
-    ax1.set_xticks(np.arange(0, psth_range.shape[0], int(psth_tick_interv)))
-    ax1.set_xticklabels(np.round(psth_range_sec, 2)[::int(psth_tick_interv)])
-    ax1.set_aspect("equal")
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("Channel")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    ax1 = plotChPsths(ax1, maxRFpsths, psth_range, psth_range_sec, psth_tick_interv)
     ax1.set_title("Max RF pixel PSTHs")
     
     plt.sca(ax2)
@@ -410,6 +350,28 @@ def plot_RF_overview(
     ax2.set_title("RF contours")
     return fig
 
+def plotChPsths(ax, psths, psth_range, psth_range_sec, psth_tick_interv=10):
+    """Plot PSTHs for all channels.
+    
+    PARAMETERS
+    ----------
+    psths : array-like, 2D
+        The PSTHs to be plotted. Shape = (nCh, psthLen).
+    psth_tick_interv : int
+        The interval for labeling the PSTH bins.
+    """
+    ax.imshow(psths, cmap="magma")
+    ax.set_xticks(np.arange(0, psth_range.shape[0], int(psth_tick_interv)))
+    ax.set_xticklabels(np.round(psth_range_sec, 2)[::int(psth_tick_interv)])
+    ax.set_aspect("equal")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Channel")
+    return ax
+
+def getPsthRange(psth_start_sec, psth_end_sec, psth_interv_sec, sampling_rate):
+    psth_range_sec = np.arange(psth_start_sec, psth_end_sec, psth_interv_sec)
+    psth_range_ut = psth_range_sec * sampling_rate
+    return psth_range_sec, psth_range_ut
 
 def get_PSTH_SNR(PSTHs, stim_mask):
     """To compute the SNR for a list of PSTHs given a stimulus mask.
@@ -436,7 +398,6 @@ def get_PSTH_SNR(PSTHs, stim_mask):
     SNR_norm = SNR / SNR.max()
     return SNR_norm
 
-
 def get_stim_mask(time_points, stim_startEnd):
     """To get the mask for stimulus given a time series, the stimulus duration 
     and the time points given have to be in same unit.
@@ -455,7 +416,6 @@ def get_stim_mask(time_points, stim_startEnd):
     stim_start, stim_end = stim_startEnd
     stim_mask = (time_points>=stim_start) & (time_points<stim_end)
     return stim_mask
-
 
 def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range, 
                         target_stim=1):
@@ -492,6 +452,21 @@ def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range,
         psths[ch] = calc_psth(st, ft, psth_range)
     return psths
 
+def getChPsths(spiketimes, ttls, psth_range):
+    """To compute the PSTHs for all channels given TTL triggers.
+    
+    PARAMETERS
+    ----------
+    spiketimes : dict
+        Dictionary containing the spiketimes for each channel.
+        The dictionary keys are the channels.
+    """
+    chs = list(spiketimes.keys())
+    psths = np.zeros((len(chs), psth_range.shape[0]-1))
+    for c, ch in enumerate(chs):
+        st = spiketimes[ch]
+        psths[c] = calc_psth(st, ttls, psth_range)
+    return psths
 
 def calc_psth(spiketimes, frametimes, psth_range):
     """To compute the PSTH.
@@ -516,3 +491,106 @@ def calc_psth(spiketimes, frametimes, psth_range):
         psth_tmp += freq
     psth = psth_tmp / len(frametimes)
     return psth
+
+
+# =============================================================================
+# Miscellaneous
+# =============================================================================
+
+def get_action(message):
+    """To get the action for a situation whether to stop or continue (ignore the concern).
+    PARAMETERS
+    ----------
+    message : str
+        The message to be shown when certain situation happened.
+    """
+    print(message)
+    if py_ver()[0] == "2":
+        action = raw_input("Action (pass, stop): ")
+    elif py_ver()[0] == "3":
+        action = input("Action (pass, stop): ")
+    while action != "stop" and action != "pass":
+        print(message)
+        if py_ver()[0] == "2":
+            action = raw_input("Action (pass, stop): ")
+        elif py_ver()[0] == "3":
+            action = input("Action (pass, stop): ")
+    if action == "pass":
+        pass
+    elif action == "stop":
+        raise KeyboardInterrupt("Extraction terminated!")
+
+def get_rawdata_timestamps_info(timestamps):
+    """
+    PARAMETERS
+    ----------
+    timestamps : array-like, 1d
+        The timestamps of the raw data.
+    
+    RETURN
+    ------
+    start_time : int
+        The start time of the raw data recording.
+    total_timestamp_len : array-like, 1d
+        The length of the data recording in unit time.
+    """
+    timestamps_len = timestamps.shape[0]
+    start_time = timestamps[0]
+    time_diff = np.diff(timestamps)
+    (loss_time_idx,) = np.where(time_diff != 1)
+    loss_time_len = time_diff[loss_time_idx].sum() - loss_time_idx.size
+    total_timestamp_len = timestamps_len + loss_time_len
+    return start_time, total_timestamp_len
+
+def getLatestFilePath(folder, files):
+    """
+    files : List of the files from the latest to the oldest.
+    """
+    latestPath = None
+    for file in files:
+        curPath = os.path.join(folder, file)
+        if os.path.exists(curPath):
+            latestPath = curPath
+            break
+    if latestPath is None:
+        raise ValueError(f"No matching file in the folder {folder}.")
+    return latestPath
+
+
+# =============================================================================
+# SpikeGLX util
+# =============================================================================
+
+def saveCsvToNeuropixTimestampsFormat(
+        timesSecCsvDir, prefix='ttl_', samplingRate=30000):
+    """To convert timestamps from second in CSV to unit time in Neuropixels 
+    format.
+    """
+    files = os.listdir(timesSecCsvDir)
+    channelStates = []
+    timestampsUt = []
+    for f, file in enumerate(files):
+        filePath = os.path.join(timesSecCsvDir, file)
+        if not os.path.isfile(filePath):
+            continue
+        fname, ext = os.path.splitext(file)    
+        if file.startswith(prefix) and ext == '.csv':
+            idx = fname.find(prefix) + len(prefix)
+            ch = int(fname[idx:])
+            ttlPath = os.path.join(timesSecCsvDir, file)
+            timesSec = np.genfromtxt(ttlPath, delimiter=',')
+            timesUnitTime = np.round(timesSec * samplingRate).astype(int)
+            channelStates = np.append(channelStates, [ch] * len(timesUnitTime))
+            timestampsUt = np.append(timestampsUt, timesUnitTime)
+    np.save(os.path.join(timesSecCsvDir, 'channel_states.npy'), channelStates)
+    np.save(os.path.join(timesSecCsvDir, 'timestamps.npy'), timestampsUt)
+
+def genDataTimestamps(rawDataPath, totalCh):
+    rawDataDir, dataFile = os.path.split(rawDataPath)
+    rawData = np.memmap(rawDataPath, dtype=np.int16, mode="r")
+    rawDataLen = int(round(len(rawData) / totalCh))
+    dataTimestamps = np.arange(rawDataLen)
+    np.save(os.path.join(rawDataDir, 'timestamps.npy'), dataTimestamps)
+    del rawData
+
+

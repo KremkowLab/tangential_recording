@@ -11,7 +11,7 @@ from joblib import Parallel, delayed
 import multiprocessing as mp
 from time import time
 import os
-from .util import *
+from . import util
 
 
 class extract_NP_MUA:
@@ -28,6 +28,7 @@ class extract_NP_MUA:
         stim_ttl_dir,
         raw_data_dir,
         save_dir,
+        raw_data_fname=None,
         fname_extensions=(None, None),
         total_ch=384,
         spike_event_std_thresh=-4,
@@ -39,6 +40,7 @@ class extract_NP_MUA:
         stim_sync_ch=1,
         probe_sync_ch=1,
         probe_ttl_dir="",
+        isSpikeGlx=False, 
         n_cores=mp.cpu_count(),
     ):
         """To extract the TTLs/timestamps and MUA from raw Neuropixels data.
@@ -50,6 +52,8 @@ class extract_NP_MUA:
             The folder path of raw data (path until .../Neuropix-3a-100.0).
         save_dir : str
             The folder path for saving the outputs.
+        raw_data_fname : str or None
+            The filename of the raw data. If None, 'continuous.dat' will be used.
         fname_extensions : tuple, optional
             The labels (prefix and postfix) for the files to be saved.
         total_ch : int
@@ -84,6 +88,7 @@ class extract_NP_MUA:
         self.stim_ttl_dir = stim_ttl_dir
         self.raw_data_dir = raw_data_dir
         self.save_dir = save_dir
+        self.raw_data_fname = raw_data_fname
         self._get_output_filename(fname_extensions)
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
@@ -97,10 +102,25 @@ class extract_NP_MUA:
         self.stim_sync_ch = stim_sync_ch
         self.probe_sync_ch = probe_sync_ch
         self.probe_ttl_dir = probe_ttl_dir
+        self.isSpikeGlx = isSpikeGlx
+        self._n_cores = max(1, n_cores)
+        self._alignTimestampsAndExtract()
+        
+    def _alignTimestampsAndExtract(self):
+        if self.raw_data_fname is None:
+            self.raw_data_fname = "continuous.dat"
+        self.rawDataPath = os.path.join(self.raw_data_dir, self.raw_data_fname)
+        self.totalDataCh = self.total_ch
+        if self.isSpikeGlx:
+            self.rawDataPath = os.path.join(self.raw_data_dir, self.raw_data_fname)
+            self.totalDataCh -= 1   # the last channel is sync channel
+            util.genDataTimestamps(self.rawDataPath, self.total_ch)
+            util.saveCsvToNeuropixTimestampsFormat(
+                self.stim_ttl_dir, prefix='ttl_', samplingRate=self._sampling_rate)
         self._get_data_path_info()
         if self.align_to_probe_timestamps:
             # stim_ttl_dir is changed to a new stim_ttl_dir that contains the aligned TTLs
-            self.stim_ttl_dir = align_and_save_timestamps(
+            self.stim_ttl_dir = util.align_and_save_timestamps(
                 self.stim_sync_ch,
                 self.probe_sync_ch,
                 self.stim_ttl_dir,
@@ -111,7 +131,6 @@ class extract_NP_MUA:
             self.stim_chState_fpath = os.path.join(self.stim_ttl_dir, self.chState_fname)
             self.stim_unitTimestamps_fpath = os.path.join(self.stim_ttl_dir, self.unitTimestamps_fname)
             print("The aligned stimulus TTL folder is {}.".format(self.stim_ttl_dir))
-        self._n_cores = max(1, n_cores)
         self._extract()
 
     def _get_output_filename(self, fname_extensions=None):
@@ -130,9 +149,9 @@ class extract_NP_MUA:
     def _get_data_path_info(self):
         latest_to_oldest_chStates_fnames = ["states.npy", "channel_states.npy"]
         latest_to_oldest_unitTimestamps_fnames = ["sample_numbers.npy", "timestamps.npy"]
-        self.stim_chState_fpath = getLatestFilePath(
+        self.stim_chState_fpath = util.getLatestFilePath(
             self.stim_ttl_dir, latest_to_oldest_chStates_fnames)
-        self.stim_unitTimestamps_fpath = getLatestFilePath(
+        self.stim_unitTimestamps_fpath = util.getLatestFilePath(
             self.stim_ttl_dir, latest_to_oldest_unitTimestamps_fnames)
         _, self.chState_fname = os.path.split(self.stim_chState_fpath)
         _, self.unitTimestamps_fname = os.path.split(self.stim_unitTimestamps_fpath)
@@ -223,15 +242,13 @@ class extract_NP_MUA:
         self.raw_data_timestamps = np.load(
             os.path.join(self.raw_data_dir, self.unitTimestamps_fname)
         )
-        cur_data_path = os.path.join(self.raw_data_dir, "continuous.dat")
-        self.raw_data = np.memmap(cur_data_path, dtype=np.int16, mode="r")
+        self.raw_data = np.memmap(self.rawDataPath, dtype=np.int16, mode="r")
         self.raw_data = self.raw_data.reshape((self.total_ch, -1), order="F")
 
     def _flatten_timestamps(self):
         """To correct the raw_data_timestamps (if any mistakes) and get the data_start_time and total_timestamp_len."""
-        self.data_start_time, self.total_timestamp_len = get_rawdata_timestamps_info(
-            self.raw_data_timestamps
-        )
+        (self.data_start_time, self.total_timestamp_len
+         ) = util.get_rawdata_timestamps_info(self.raw_data_timestamps)
         start_zero = self.data_start_time == 0
         correct_ideal_len = self.raw_data.shape[1] - self.total_timestamp_len == 0
         correct_time_len = (
@@ -247,7 +264,7 @@ class extract_NP_MUA:
                 ):
                     self.raw_data_timestamps = np.arange(self.raw_data.shape[1])
                 else:
-                    get_action(
+                    util.get_action(
                         "First timestamp (data_start_time): {}\n"
                         "The raw data ({}) and timestamps ({}) lengths"
                         " are not consistent!".format(
@@ -312,7 +329,7 @@ class extract_NP_MUA:
         spiketimes_arr gives the spiketimes in unit time for each channel.
         """
         spiketimes_arr = Parallel(n_jobs=self._n_cores, verbose=10)(
-            delayed(filter_detect)(
+            delayed(util.filter_detect)(
                 self.cur_data[ch - 1, :],
                 self.raw_data_timestamps[self._cur_start],
                 self.spike_event_std_thresh,
@@ -322,7 +339,7 @@ class extract_NP_MUA:
                 self._sampling_rate,
                 self._butter_bandpass_order,
             )
-            for ch in range(1, self.total_ch + 1)
+            for ch in range(1, self.totalDataCh + 1)
         )
         spiketimesDict = {i:arr for i, arr in enumerate(spiketimes_arr)}
         self.save(spiketimesDict, "slice{}".format(slice_idx))
@@ -335,11 +352,11 @@ class extract_NP_MUA:
         num_files : int
             The total number of files to be loaded and saved.
         """
-        self.st_dict = {ch: [] for ch in range(1, self.total_ch + 1)}
+        self.st_dict = {ch: [] for ch in range(1, self.totalDataCh + 1)}
         for i in range(num_files):
             cur_file = os.path.join(self.save_dir, "slice{}.npy".format(i + 1))
             st_arr = np.load(cur_file, allow_pickle=True).item()
-            for ch in range(1, self.total_ch + 1):
+            for ch in range(1, self.totalDataCh + 1):
                 self.st_dict[ch] = np.append(self.st_dict[ch], st_arr[ch - 1]).astype(
                     int
                 )
