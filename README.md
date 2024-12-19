@@ -9,7 +9,7 @@ Run the `MUA_STA_RFs_exec.py` to:
 
 **Software:** 
 1. *Requirements:* Python 3, [PsychoPy toobox](https://www.psychopy.org/download.html)
-2. An example of a [short Neuropixels recording](https://drive.google.com/drive/folders/19J-1CywCBwKaT7fIeQdrptI3LV4aR7e6?usp=sharing) (5 GB) is provided as a reference for calibration purposes.
+2. An example of a [short Neuropixels recording](https://zenodo.org/records/6850116#.YtQNq4RBzQM) (5 GB) is provided as a reference for calibration purposes.
 
 **Hardware:**  
 To ensure proper alignment of the recorded neuronal activity to the timing of the visual stimulus frames, each frame of the stimulus matrix should be paired with a stimulus TTL.
