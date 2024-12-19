@@ -352,7 +352,7 @@ def plot_RF_overview(
 
 def plotChPsths(
         ax, psths, psth_range, psth_range_sec, psth_tick_interv=10, 
-        vmin=None, vmax=None):
+        vmin=None, vmax=None, xtickRotation=25):
     """Plot PSTHs for all channels.
     
     PARAMETERS
@@ -364,7 +364,8 @@ def plotChPsths(
     """
     ax.imshow(psths, cmap="magma", vmin=vmin, vmax=vmax)
     ax.set_xticks(np.arange(0, psth_range.shape[0], int(psth_tick_interv)))
-    ax.set_xticklabels(np.round(psth_range_sec, 2)[::int(psth_tick_interv)])
+    ax.set_xticklabels(
+        np.round(psth_range_sec, 2)[::int(psth_tick_interv)], rotation=xtickRotation)
     ax.set_aspect("equal")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Channel")
@@ -372,7 +373,7 @@ def plotChPsths(
 
 def plotNpix2ChMappedPsths(
         chMappedPsths, psth_range, psth_range_sec, psth_tick_interv=10, 
-        sameClim=True, figsize=(10,10)):
+        sameClim=True, xtickRotation=25, figsize=(10,10)):
     """
     chMappedPsths : array-like, 3D
         The Neuropixels 2 channel mapped PSTHs. Shape = (nShank, nCh, psthLen).
@@ -387,7 +388,7 @@ def plotNpix2ChMappedPsths(
     for i, ax in enumerate(axs):
         ax = plotChPsths(
             ax, chMappedPsths[i], psth_range, psth_range_sec, psth_tick_interv, 
-            *clim)
+            *clim, xtickRotation)
         ax.set_title(f'Shank {i+1}')
     return fig
 
