@@ -350,7 +350,9 @@ def plot_RF_overview(
     ax2.set_title("RF contours")
     return fig
 
-def plotChPsths(ax, psths, psth_range, psth_range_sec, psth_tick_interv=10):
+def plotChPsths(
+        ax, psths, psth_range, psth_range_sec, psth_tick_interv=10, 
+        vmin=None, vmax=None):
     """Plot PSTHs for all channels.
     
     PARAMETERS
@@ -360,13 +362,34 @@ def plotChPsths(ax, psths, psth_range, psth_range_sec, psth_tick_interv=10):
     psth_tick_interv : int
         The interval for labeling the PSTH bins.
     """
-    ax.imshow(psths, cmap="magma")
+    ax.imshow(psths, cmap="magma", vmin=vmin, vmax=vmax)
     ax.set_xticks(np.arange(0, psth_range.shape[0], int(psth_tick_interv)))
     ax.set_xticklabels(np.round(psth_range_sec, 2)[::int(psth_tick_interv)])
     ax.set_aspect("equal")
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Channel")
     return ax
+
+def plotNpix2ChMappedPsths(
+        chMappedPsths, psth_range, psth_range_sec, psth_tick_interv=10, 
+        sameClim=True, figsize=(10,10)):
+    """
+    chMappedPsths : array-like, 3D
+        The Neuropixels 2 channel mapped PSTHs. Shape = (nShank, nCh, psthLen).
+    """
+    nShank, nCh, psthLen = chMappedPsths.shape
+    clim = [None, None]
+    if sameClim:
+        mnVal = np.nanmin(chMappedPsths)
+        mxVal = np.nanmax(chMappedPsths)
+        clim = [mnVal, mxVal]
+    fig, axs = plt.subplots(1, nShank, figsize=figsize)
+    for i, ax in enumerate(axs):
+        ax = plotChPsths(
+            ax, chMappedPsths[i], psth_range, psth_range_sec, psth_tick_interv, 
+            *clim)
+        ax.set_title(f'Shank {i+1}')
+    return fig
 
 def getPsthRange(psth_start_sec, psth_end_sec, psth_interv_sec, sampling_rate):
     psth_range_sec = np.arange(psth_start_sec, psth_end_sec, psth_interv_sec)
@@ -492,6 +515,31 @@ def calc_psth(spiketimes, frametimes, psth_range):
     psth = psth_tmp / len(frametimes)
     return psth
 
+def mapPsthsToShank(psths, chMap, emptyVal=np.nan):
+    """
+    Parameters
+    ----------
+    psths : array-like, 2D
+        Shape = (nCh, psthLen).
+    chMap : array-like, 2D
+        Channel mapping. Shape = (nCh, 5).
+    
+    Return
+    ------
+    chMappedPsths : array-like, 3D
+        Shape = (nShank, nCh, psthLen).
+    """
+    nCh, psthLen = psths.shape
+    shankInd = np.unique(chMap[:, 1])
+    nShank = len(shankInd)
+    chMappedPsths = np.full((nShank, nCh, psthLen), emptyVal)
+    for i, shankIdx in enumerate(shankInd):
+        shankMask = chMap[:, 1] == shankIdx
+        shankChInd = chMap[:, -1][shankMask]
+        shankIdxArr = np.array([shankIdx] * len(shankChInd))
+        chMappedPsths[shankIdxArr, shankChInd] = psths[shankMask]
+    return chMappedPsths
+
 
 # =============================================================================
 # Miscellaneous
@@ -592,5 +640,23 @@ def genDataTimestamps(rawDataPath, totalCh):
     dataTimestamps = np.arange(rawDataLen)
     np.save(os.path.join(rawDataDir, 'timestamps.npy'), dataTimestamps)
     del rawData
+
+def getNpix2ChannelMap(filePath):
+    """
+    filePath : str
+        The path to the NP2.0_surface_2_use.imro file.
+        
+    Return
+    ------
+    dataArr : array-like, 2D
+        The channel mapping, Shape = (nCh, 5).
+    """
+    with open(filePath, 'r') as file:
+        data = file.read().strip()
+    data = data.split(')', 1)[1].strip()   # Remove the first part (2013,384)
+    chunks = data.split(')(')
+    chunks = [chunk.replace('(', '').replace(')', '') for chunk in chunks]
+    dataArr = np.array([list(map(int, chunk.split())) for chunk in chunks])
+    return dataArr
 
 

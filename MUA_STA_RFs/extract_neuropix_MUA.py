@@ -117,6 +117,10 @@ class extract_NP_MUA:
             util.genDataTimestamps(self.rawDataPath, self.total_ch)
             util.saveCsvToNeuropixTimestampsFormat(
                 self.stim_ttl_dir, prefix='ttl_', samplingRate=self._sampling_rate)
+            if self.probe_ttl_dir:
+                util.saveCsvToNeuropixTimestampsFormat(
+                    self.probe_ttl_dir, prefix='ttl_', 
+                    samplingRate=self._sampling_rate)
         self._get_data_path_info()
         if self.align_to_probe_timestamps:
             # stim_ttl_dir is changed to a new stim_ttl_dir that contains the aligned TTLs
@@ -128,8 +132,10 @@ class extract_NP_MUA:
                 self.chState_fname,
                 self.unitTimestamps_fname
             )
-            self.stim_chState_fpath = os.path.join(self.stim_ttl_dir, self.chState_fname)
-            self.stim_unitTimestamps_fpath = os.path.join(self.stim_ttl_dir, self.unitTimestamps_fname)
+            self.stim_chState_fpath = os.path.join(
+                self.stim_ttl_dir, self.chState_fname)
+            self.stim_unitTimestamps_fpath = os.path.join(
+                self.stim_ttl_dir, self.unitTimestamps_fname)
             print("The aligned stimulus TTL folder is {}.".format(self.stim_ttl_dir))
         self._extract()
 
