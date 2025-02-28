@@ -11,6 +11,7 @@ from scipy.signal import butter, filtfilt
 from scipy import interpolate
 from platform import python_version as py_ver
 import os, shutil
+from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 
 
@@ -476,7 +477,7 @@ def get_maxRFpixel_psth(RFs, stimulus, spiketimes, frametimes, psth_range,
         psths[ch] = calc_psth(st, ft, psth_range)
     return psths
 
-def getChPsths(spiketimes, ttls, psth_range):
+def getChPsths(spiketimes, ttls, psth_range, n_cores=os.cpu_count()/2):
     """To compute the PSTHs for all channels given TTL triggers.
     
     PARAMETERS
@@ -485,20 +486,27 @@ def getChPsths(spiketimes, ttls, psth_range):
         Dictionary containing the spiketimes for each channel.
         The dictionary keys are the channels.
     """
+    n_cores = int(n_cores)
     chs = list(spiketimes.keys())
-    psths = np.zeros((len(chs), psth_range.shape[0]-1))
-    for c, ch in enumerate(chs):
-        st = spiketimes[ch]
-        psths[c] = calc_psth(st, ttls, psth_range)
+    n_psth = psth_range.shape[0] - 1
+    if n_cores > 1:
+        psths = (Parallel(n_jobs=n_cores, verbose=10)
+                 (delayed(calc_psth)
+                 (spiketimes[ch], ttls, psth_range) for ch in chs))
+        psths = np.array(psths).reshape(len(chs), n_psth)
+    else:
+        psths = np.zeros((len(chs), n_psth))
+        for c, ch in enumerate(chs):
+            st = spiketimes[ch]
+            psths[c] = calc_psth(st, ttls, psth_range)
     return psths
 
 def calc_psth(spiketimes, frametimes, psth_range):
     """To compute the PSTH.
     PARAMETERS
     ----------
-    spiketimes : dict
-        Dictionary containing the spiketimes for each channel.
-        The dictionary keys are the channels.
+    spiketimes : array_like, 1d
+        The spiketimes of a channel/cluster.
     frametimes : array_like, 1d
         The stimulus timestamps/TTLs for the locally sparse noise frames.
     psth_range : array-like, 1D
