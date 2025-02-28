@@ -7,6 +7,11 @@ Run the `MUA_STA_RFs_exec.py` to:
 2. compute the STA of the MUA to map the RFs for each channel of the probe, and 
 3. plot the estimated RFs.
 
+Alternatively, run the `MUA_extraction_PSTH.py` to:
+1. extract the MUA from the Neuropixels recording, and
+2. compute the PSTH of the MUA for each channel of the probe to see the stimulus effects.
+No RF estimation in `MUA_extraction_PSTH.py`.
+
 **Software:** 
 1. *Requirements:* Python 3, [PsychoPy toobox](https://www.psychopy.org/download.html)
 2. An example of a [short Neuropixels recording](https://zenodo.org/records/6850116#.YtQNq4RBzQM) (3.5 GB) is provided as a reference for calibration purposes.
