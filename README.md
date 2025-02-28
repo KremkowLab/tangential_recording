@@ -2,12 +2,12 @@
 
 This repo implements the receptive field (RF) analysis via spike-triggered average (STA) of the multi-unit activity (MUA) from Neuropixels probe recordings. These scripts intend to quickly test the presence of any neuronal responses to visual stimuli in order to optimize the probe placement during tangential recordings in the mouse superior colliculus ([Sibille et al., 2022](https://www.sciencedirect.com/science/article/pii/S0165027022001492?via%3Dihub)). Specifically, sparse-noise stimuli were presented to map the RFs. The peri-stimulus time histograms (PSTHs) and the corresponding RFs will be produced as part of the outputs.
 
-Run the `MUA_STA_RFs_exec.py` to:
+Run `MUA_STA_RFs_exec.py` to:
 1. extract the MUA from the Neuropixels recording,
 2. compute the STA of the MUA to map the RFs for each channel of the probe, and 
 3. plot the estimated RFs.
 
-Alternatively, run the `MUA_extraction_PSTH.py` (no RF estimation) to:
+Alternatively, run `MUA_extraction_PSTH.py` (no RF estimation) to:
 1. extract the MUA from the Neuropixels recording, and
 2. compute the PSTH of the MUA for each channel of the probe to see the stimulus effects.
 
