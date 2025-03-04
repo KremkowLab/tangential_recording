@@ -36,6 +36,9 @@ class extract_NP_MUA:
         extract_stop_time=None,
         event_keys=[(1, "sync"), (2, "starts"), (3, "frametimes"), (4, "stops")],
         slice_len=None,
+        periStimExtractionKey=None,
+        periStimPreDurationSec=10,
+        periStimTotDurationSec=20,
         align_to_probe_timestamps=True,
         stim_sync_ch=1,
         probe_sync_ch=1,
@@ -61,10 +64,10 @@ class extract_NP_MUA:
         spike_event_std_thresh : int or float
             The multiple of standard deviation of Butterworth bandpass filtered
             signals to be considered as spiking events.
-        extract_start_time : int, optional
+        extract_start_time : int or None
             The start time (in unit time) of the data to be extracted.
             If None, the data will be extracted from the beginning.
-        extract_stop_time : int, optional
+        extract_stop_time : int or None
             The end time (in unit time) of the data to be extracted.
             If None, the data will be extracted until the end.
         event_keys : list
@@ -73,6 +76,17 @@ class extract_NP_MUA:
             E.g. [(1, 'starts'), (2, 'stim_frametimes'), ...].
         slice_len : int
             The length (in second) for slicing the data, in case the data size is too big.
+        periStimExtractionKey : str or None
+            The event/TTL key for extracting the peri-stimulus MUA 
+            (instead of extracting everything). If both extract_start_time and 
+            extract_stop_time are not specified, then only the peri-stimulus 
+            trials will be extracted. Otherwise, any overlapping slices will be
+            merged.
+        periStimPreDurationSec : int or float
+            The duration in second before the stimulus onsets/TTLs for the 
+            peri-stimulus extraction.
+        periStimTotDurationSec : int or float
+            The total duration in second for the peri-stimulus extraction.
         align_to_probe_timestamps : bool
             If True, the stimulus TTLs/timestamps will be aligned to the probe's
             clock (via probe sync TTLs) to compensate for the offsets in sampling rate.
@@ -98,6 +112,9 @@ class extract_NP_MUA:
         self.extract_stop_time = extract_stop_time
         self.event_keys = event_keys
         self.slice_len = slice_len
+        self.periStimExtractionKey = periStimExtractionKey
+        self.periStimPreDurationSec = periStimPreDurationSec
+        self.periStimTotDurationSec = periStimTotDurationSec
         self.align_to_probe_timestamps = align_to_probe_timestamps
         self.stim_sync_ch = stim_sync_ch
         self.probe_sync_ch = probe_sync_ch
@@ -200,33 +217,12 @@ class extract_NP_MUA:
         """Start extract the spike times slice-by-slice."""
         self._get_raw_data()
         self._flatten_timestamps()
-        extract_start_idx = (
-            0
-            if not self.extract_start_time
-            else self.extract_start_time - self.data_start_time
-        )
-        extract_stop_idx = (
-            self.raw_data.shape[1]
-            if not self.extract_stop_time
-            else self.extract_stop_time - self.data_start_time
-        )
-        if self.slice_len:
-            idx = np.arange(
-                extract_start_idx, extract_stop_idx, self.slice_len * self._sampling_rate
-            )
-            idx = np.append(idx, extract_stop_idx)
-        else:
-            idx = np.array([extract_start_idx, extract_stop_idx])
-        print(
-            "Slicing points (unit time): {}\nTotal number of slices: {}".format(
-                idx, len(idx) - 1
-            )
-        )
-        for n, i in enumerate(idx[:-1], 1):
+        self._getSliceInd()
+        for n, start in enumerate(self._sliceStartInd, 1):
             if not os.path.exists(os.path.join(self.save_dir, "slice{}.npy".format(n))):
                 t1 = time()
-                self._cur_start = i
-                self._cur_stop = idx[n]
+                self._cur_start = start
+                self._cur_stop = self._sliceStopInd[n-1]
                 print(
                     "Current slice (unit time): {} to {}".format(
                         self._cur_start, self._cur_stop
@@ -285,7 +281,54 @@ class extract_NP_MUA:
                         self.data_start_time,
                         self.data_start_time + self.raw_data.shape[1],
                     )
-
+    
+    def _getSliceInd(self):
+        extract_start_idx = (
+            0
+            if not self.extract_start_time
+            else self.extract_start_time - self.data_start_time
+        )
+        extract_stop_idx = (
+            self.raw_data.shape[1]
+            if not self.extract_stop_time
+            else self.extract_stop_time - self.data_start_time
+        )
+        if self.slice_len:
+            ind = np.arange(
+                extract_start_idx, extract_stop_idx, self.slice_len * self._sampling_rate
+            )
+            sliceInd = np.append(ind, extract_stop_idx)
+        else:
+            sliceInd = np.array([extract_start_idx, extract_stop_idx])
+        self._sliceStartInd = sliceInd[:-1]
+        self._sliceStopInd = sliceInd[1:]
+        
+        hasSpecifiedExtraction = self.extract_start_time is not None or \
+            self.extract_stop_time is not None
+        if self.periStimExtractionKey is not None:
+            if not hasSpecifiedExtraction:
+                self._sliceStartInd = []
+                self._sliceStopInd = []
+            self._addPeriStimSliceInd()
+        slices = list(zip(self._sliceStartInd, self._sliceStopInd))
+        print(
+            f"Slices (unit time): {slices}\nTotal number of slices: {len(slices)}")
+    
+    def _addPeriStimSliceInd(self):
+        """Add the peri-stimulus slices to the slices to be extracted. If there
+        are overlaps between the existing slices and peri-stimulus slices, the
+        fully/partially overlapped peri-stimulus slices will be merged.
+        """
+        periStimTtls = self.stim_ttl_dict[self.periStimExtractionKey]
+        periStimPreDurationUt = int(round(self.periStimPreDurationSec * self._sampling_rate))
+        periStimTotDurationUt = int(round(self.periStimTotDurationSec * self._sampling_rate))
+        self._periStimStartInd = periStimTtls - periStimPreDurationUt
+        self._periStimStopInd = self._periStimStartInd + periStimTotDurationUt
+        self._sliceStartInd = np.append(self._sliceStartInd, self._periStimStartInd).astype(int)
+        self._sliceStopInd = np.append(self._sliceStopInd, self._periStimStopInd).astype(int)
+        self._sliceStartInd, self._sliceStopInd = util.mergeTrials(
+            self._sliceStartInd, self._sliceStopInd)
+    
     def _get_cur_data(self):
         """To get the data of current slice."""
         t0 = time()
