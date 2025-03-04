@@ -613,6 +613,21 @@ def getLatestFilePath(folder, files):
         raise ValueError(f"No matching file in the folder {folder}.")
     return latestPath
 
+def mergeTrials(starts, stops):
+    intervals = sorted(zip(starts, stops))
+    mergedIntervals = []
+    for curStart, curStop in intervals:
+        hasMerged = len(mergedIntervals) > 0
+        if hasMerged:
+            prevStart, prevStop = mergedIntervals[-1]
+            noOverlap = prevStop < curStart
+        if not hasMerged or noOverlap:
+            mergedIntervals.append((curStart, curStop))
+        else:
+            mergedIntervals[-1] = (prevStart, max(prevStop, curStop))
+    starts, stops = zip(*mergedIntervals)
+    return np.array(starts), np.array(stops)
+
 
 # =============================================================================
 # SpikeGLX util
