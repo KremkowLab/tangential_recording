@@ -58,8 +58,8 @@ pix_data = mua.extract_NP_MUA(
 st_filename = pix_data.spiketimes_fname   # Or "spiketimes.npy" or any other name of the file that contains the spiketimes dictionary
 ttl_filename = pix_data.stim_ttl_fname   # Or "stim_TTLs.npy" or any other name of the file that contains the stimulus TTLs dictionary
 spiketimes = np.load(os.path.join(save_dir, st_filename), encoding='latin1', allow_pickle=True).item()
-frametimes_dict = np.load(os.path.join(save_dir, ttl_filename), encoding='latin1', allow_pickle=True).item()
-LSN_frametimes = frametimes_dict["locally_sparse_noise"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
+ttl_dict = np.load(os.path.join(save_dir, ttl_filename), encoding='latin1', allow_pickle=True).item()
+LSN_frametimes = ttl_dict["locally_sparse_noise"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
 STA = mua.get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
 STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
 RF_overview_fig = mua.plot_RF_overview(
