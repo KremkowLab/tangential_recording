@@ -8,17 +8,17 @@ Created on Mon May 31 14:29:51 2021
 
 import numpy as np
 import os
-import multiprocessing as mp
-from MUA_STA_RFs import *
+import MUA_STA_RFs as mua
 
 
 #%% Parameters
 
-stim_ttl_dir = "/media/kailun/kailun_sata_inte/PhD/other_projects/tangential_recording/example_data/2019-07-18_13-16-40/2019-07-18_13-16-40/experiment1/recording1/events/Neuropix-PXI-100.0/TTL_1"
-raw_data_dir = "/media/kailun/kailun_sata_inte/PhD/other_projects/tangential_recording/example_data/2019-07-18_13-16-40/2019-07-18_13-16-40/experiment1/recording1/continuous/Neuropix-PXI-100.0"
-probe_ttl_dir = ""
-save_dir = "/media/kailun/kailun_sata_inte/PhD/other_projects/tangential_recording/example_data/test_outputs"
-stimulus_path = "/media/kailun/kailun_sata_inte/VisualStimuli/stimuli/locally_light_sparse_noise_36_22_target_size_3_targets_per_frame_2_trials_10_background_0.0_20181120.npy"
+recordingPath = '.../example_data'
+stim_ttl_dir = os.path.join(recordingPath, "2019-07-18_13-16-40/2019-07-18_13-16-40/experiment1/recording1/events/Neuropix-PXI-100.0/TTL_1")
+raw_data_dir = os.path.join(recordingPath, "2019-07-18_13-16-40/2019-07-18_13-16-40/experiment1/recording1/continuous/Neuropix-PXI-100.0")
+probe_ttl_dir = ''
+save_dir = os.path.join(recordingPath, 'test_outputs')
+stimulus_path = ".../VisualStimuli/stimuli/locally_light_sparse_noise_36_22_target_size_3_targets_per_frame_2_trials_10_background_0.0_20181120.npy"
 stimulus_data = np.load(stimulus_path, encoding='latin1', allow_pickle=True).item()
 sparse_noise_stim = stimulus_data["frames"].astype(float)  # Sparse noise stimuli with shape = (ny, nx, nframes).
 STA_lags = np.arange(-7, 3)  # The range of lags for computing STA.
@@ -26,9 +26,10 @@ subplots_rc = (24, 16)  # (nrows, ncols) or None. The number of rows and columns
 fig_fname = "STA_RFs.png"  # The filename for saving the plotted figure.
 fig_size_pix = None  # (width, height) or None. The size of the figure (STA RFs) in pixel.
 
+
 #%% Extract MUA from Neuropixels data
 
-pix_data = extract_NP_MUA(
+pix_data = mua.extract_NP_MUA(
     stim_ttl_dir,  # The folder path of the stimulus TTLs (path until .../TTL_1).
     raw_data_dir,  # The folder path of raw data (path until .../Neuropix-3a-100.0).
     save_dir,  # The folder path for saving the outputs.
@@ -38,7 +39,7 @@ pix_data = extract_NP_MUA(
     extract_start_time=None,  # The start time (in unit time) of the data to be extracted. If None, the data will be extracted from the beginning.
     extract_stop_time=None,  # The end time (in unit time) of the data to be extracted. If None, the data will be extracted until the end.
     event_keys=[
-        (1, "frametimes"),
+        (1, "locally_sparse_noise"),
         (2, "starts"),
         (3, "sync"),
         (4, "stops"),
@@ -48,8 +49,9 @@ pix_data = extract_NP_MUA(
     stim_sync_ch=1,  # The channel state for the sync channel of the stimulus TTLs.
     probe_sync_ch=1,  # The channel state for the sync channel of the probe TTLs.
     probe_ttl_dir=probe_ttl_dir,  # The folder path of the probe TTLs.
-    n_cores=int(mp.cpu_count() / 2)  # The number of CPUs to be used for parallel computing. Spare some CPUs so that the computer is not slowed down for other processes.
+    n_cores=int(os.cpu_count() / 2)  # The number of CPUs to be used for parallel computing. Spare some CPUs so that the computer is not slowed down for other processes.
 )
+
 
 #%% Compute STA and plot the RFs
 
@@ -57,10 +59,10 @@ st_filename = pix_data.spiketimes_fname   # Or "spiketimes.npy" or any other nam
 ttl_filename = pix_data.stim_ttl_fname   # Or "stim_TTLs.npy" or any other name of the file that contains the stimulus TTLs dictionary
 spiketimes = np.load(os.path.join(save_dir, st_filename), encoding='latin1', allow_pickle=True).item()
 frametimes_dict = np.load(os.path.join(save_dir, ttl_filename), encoding='latin1', allow_pickle=True).item()
-LSN_frametimes = frametimes_dict["frametimes"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
-STA = get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
+LSN_frametimes = frametimes_dict["locally_sparse_noise"]  # Plese use the key for the stimulus frametimes/TTLs when extracting the NP MUA above.
+STA = mua.get_STA(sparse_noise_stim, spiketimes, LSN_frametimes, STA_lags, save_dir)
 STA_RF_fig = STA.plot(subplots_rc, fig_fname, fig_size_pix)
-RF_overview_fig = plot_RF_overview(
+RF_overview_fig = mua.plot_RF_overview(
         STA.STA_RFs, 
         sparse_noise_stim,  # Shape = (ny, nx, nframes)
         spiketimes, 
@@ -77,3 +79,4 @@ RF_overview_fig = plot_RF_overview(
         figsize=(15,10),
         psth_tick_interv=20,
 )
+
