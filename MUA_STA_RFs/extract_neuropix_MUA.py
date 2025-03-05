@@ -8,7 +8,6 @@ Created on Wed May 22 15:18:27 2019
 
 import numpy as np
 from joblib import Parallel, delayed
-import multiprocessing as mp
 from time import time
 import os
 from . import util
@@ -19,6 +18,7 @@ class extract_NP_MUA:
     _signal_highcut = 3000  # the high cut of the signal frequency
     _butter_bandpass_order = 2  # the order for the Butterworth bandpass filter
     _sampling_rate = 30000  # the sampling rate of the Neuropixels probe
+    _truncateStimTtlWithExtraction = False
     _signal_orientation = (
         "negative"  # 'positive', 'negative', or 'both', the signal orientation for processing
     )
@@ -32,19 +32,19 @@ class extract_NP_MUA:
         fname_extensions=(None, None),
         total_ch=384,
         spike_event_std_thresh=-4,
-        extract_start_time=None,
-        extract_stop_time=None,
+        extractStartTimeSec=None,
+        extractStopTimeSec=None,
         event_keys=[(1, "sync"), (2, "starts"), (3, "frametimes"), (4, "stops")],
-        slice_len=None,
-        periStimExtractionKey=None,
-        periStimPreDurationSec=10,
-        periStimTotDurationSec=20,
+        sliceLenSec=None,
+        periStimExtractionKeys=None,
+        periStimPreDurationSecs=[10],
+        periStimTotDurationSecs=[20],
         align_to_probe_timestamps=True,
         stim_sync_ch=1,
         probe_sync_ch=1,
         probe_ttl_dir="",
         isSpikeGlx=False, 
-        n_cores=mp.cpu_count(),
+        n_cores=os.cpu_count(),
     ):
         """To extract the TTLs/timestamps and MUA from raw Neuropixels data.
         PARAMETERS
@@ -64,28 +64,26 @@ class extract_NP_MUA:
         spike_event_std_thresh : int or float
             The multiple of standard deviation of Butterworth bandpass filtered
             signals to be considered as spiking events.
-        extract_start_time : int or None
-            The start time (in unit time) of the data to be extracted.
+        extractStartTimeSec : int or None
+            The start time (in second) of the data to be extracted.
             If None, the data will be extracted from the beginning.
-        extract_stop_time : int or None
-            The end time (in unit time) of the data to be extracted.
+        extractStopTimeSec : int or None
+            The end time (in second) of the data to be extracted.
             If None, the data will be extracted until the end.
         event_keys : list
             List containing tuples of channel states (int) and their corresponding
             TTL keys (str: 'starts', 'frametimes', 'stops', 'camera', etc.).
             E.g. [(1, 'starts'), (2, 'stim_frametimes'), ...].
-        slice_len : int
+        sliceLenSec : int
             The length (in second) for slicing the data, in case the data size is too big.
-        periStimExtractionKey : str or None
+        periStimExtractionKeys : list or None
             The event/TTL key for extracting the peri-stimulus MUA 
-            (instead of extracting everything). If both extract_start_time and 
-            extract_stop_time are not specified, then only the peri-stimulus 
-            trials will be extracted. Otherwise, any overlapping slices will be
+            (instead of extracting everything). Any overlapping slices will be
             merged.
-        periStimPreDurationSec : int or float
+        periStimPreDurationSecs : list of int or float
             The duration in second before the stimulus onsets/TTLs for the 
             peri-stimulus extraction.
-        periStimTotDurationSec : int or float
+        periStimTotDurationSecs : list of int or float
             The total duration in second for the peri-stimulus extraction.
         align_to_probe_timestamps : bool
             If True, the stimulus TTLs/timestamps will be aligned to the probe's
@@ -108,19 +106,25 @@ class extract_NP_MUA:
             os.makedirs(self.save_dir)
         self.total_ch = total_ch
         self.spike_event_std_thresh = spike_event_std_thresh
-        self.extract_start_time = extract_start_time
-        self.extract_stop_time = extract_stop_time
+        self.extractStartTimeSec = extractStartTimeSec
+        self.extractStopTimeSec = extractStopTimeSec
         self.event_keys = event_keys
-        self.slice_len = slice_len
-        self.periStimExtractionKey = periStimExtractionKey
-        self.periStimPreDurationSec = periStimPreDurationSec
-        self.periStimTotDurationSec = periStimTotDurationSec
+        self.sliceLenSec = sliceLenSec
+        self.periStimExtractionKeys = periStimExtractionKeys
+        self.periStimPreDurationSecs = periStimPreDurationSecs
+        self.periStimTotDurationSecs = periStimTotDurationSecs
         self.align_to_probe_timestamps = align_to_probe_timestamps
         self.stim_sync_ch = stim_sync_ch
         self.probe_sync_ch = probe_sync_ch
         self.probe_ttl_dir = probe_ttl_dir
         self.isSpikeGlx = isSpikeGlx
         self._n_cores = max(1, n_cores)
+        if self.extractStartTimeSec is not None:
+            self.extractStartTimeUt = int(round(
+                self.extractStartTimeSec * self._sampling_rate))
+        if self.extractStopTimeSec is not None:
+            self.extractStopTimeUt = int(round(
+                self.extractStopTimeSec * self._sampling_rate))
         self._alignTimestampsAndExtract()
         
     def _alignTimestampsAndExtract(self):
@@ -200,24 +204,28 @@ class extract_NP_MUA:
         timestamps = np.load(self.stim_unitTimestamps_fpath)
         for ch, key in self.event_keys:
             ch_timestamps = timestamps[channel_states==ch]
-            start_t = self.extract_start_time if self.extract_start_time else 0
-            if self.extract_stop_time:
-                self.stim_ttl_dict[key] = ch_timestamps[
-                    np.where(
-                        (ch_timestamps >= start_t)
-                        & (ch_timestamps <= self.extract_stop_time)
-                    )
-                ]
+            if self._truncateStimTtlWithExtraction:
+                start_t = self.extractStartTimeUt if self.extractStartTimeUt else 0
+                if self.extractStopTimeSec:
+                    self.stim_ttl_dict[key] = ch_timestamps[
+                        np.where(
+                            (ch_timestamps >= start_t)
+                            & (ch_timestamps <= self.extractStopTimeUt)
+                        )
+                    ]
+                else:
+                    self.stim_ttl_dict[key] = ch_timestamps[
+                        np.where(ch_timestamps >= start_t)
+                    ]
             else:
-                self.stim_ttl_dict[key] = ch_timestamps[
-                    np.where(ch_timestamps >= start_t)
-                ]
+                self.stim_ttl_dict[key] = ch_timestamps
 
     def _start_extract_spikes(self):
         """Start extract the spike times slice-by-slice."""
         self._get_raw_data()
         self._flatten_timestamps()
         self._getSliceInd()
+        self._curSliceIsEmpty = False
         for n, start in enumerate(self._sliceStartInd, 1):
             if not os.path.exists(os.path.join(self.save_dir, "slice{}.npy".format(n))):
                 t1 = time()
@@ -229,6 +237,10 @@ class extract_NP_MUA:
                     )
                 )
                 self._get_cur_data()
+                if self._curSliceIsEmpty:
+                    print('No more spike data to extract!')
+                    n -= 1
+                    break
                 self._get_spiketimes(n)
                 print("Slice {} done! Time: {:.2f}s".format(n, time() - t1))
             else:
@@ -236,7 +248,8 @@ class extract_NP_MUA:
         self._save_spiketimes_dict(n)
         del self.raw_data
         if os.path.exists(os.path.join(self.save_dir, "temp.npy")):
-            del self.cur_data
+            if not self._curSliceIsEmpty:
+                del self.cur_data
             os.remove(os.path.join(self.save_dir, "temp.npy"))
 
     def _get_raw_data(self):
@@ -285,27 +298,26 @@ class extract_NP_MUA:
     def _getSliceInd(self):
         extract_start_idx = (
             0
-            if not self.extract_start_time
-            else self.extract_start_time - self.data_start_time
+            if not self.extractStartTimeSec
+            else self.extractStartTimeUt - self.data_start_time
         )
         extract_stop_idx = (
             self.raw_data.shape[1]
-            if not self.extract_stop_time
-            else self.extract_stop_time - self.data_start_time
+            if not self.extractStopTimeSec
+            else self.extractStopTimeUt - self.data_start_time
         )
-        if self.slice_len:
-            ind = np.arange(
-                extract_start_idx, extract_stop_idx, self.slice_len * self._sampling_rate
-            )
+        if self.sliceLenSec:
+            self.sliceLenUt = self.sliceLenSec * self._sampling_rate
+            ind = np.arange(extract_start_idx, extract_stop_idx, self.sliceLenUt)
             sliceInd = np.append(ind, extract_stop_idx)
         else:
             sliceInd = np.array([extract_start_idx, extract_stop_idx])
         self._sliceStartInd = sliceInd[:-1]
         self._sliceStopInd = sliceInd[1:]
         
-        hasSpecifiedExtraction = self.extract_start_time is not None or \
-            self.extract_stop_time is not None
-        if self.periStimExtractionKey is not None:
+        hasSpecifiedExtraction = self.extractStartTimeSec is not None or \
+            self.extractStopTimeSec is not None
+        if self.periStimExtractionKeys is not None:
             if not hasSpecifiedExtraction:
                 self._sliceStartInd = []
                 self._sliceStopInd = []
@@ -319,15 +331,19 @@ class extract_NP_MUA:
         are overlaps between the existing slices and peri-stimulus slices, the
         fully/partially overlapped peri-stimulus slices will be merged.
         """
-        periStimTtls = self.stim_ttl_dict[self.periStimExtractionKey]
-        periStimPreDurationUt = int(round(self.periStimPreDurationSec * self._sampling_rate))
-        periStimTotDurationUt = int(round(self.periStimTotDurationSec * self._sampling_rate))
-        self._periStimStartInd = periStimTtls - periStimPreDurationUt
-        self._periStimStopInd = self._periStimStartInd + periStimTotDurationUt
-        self._sliceStartInd = np.append(self._sliceStartInd, self._periStimStartInd).astype(int)
-        self._sliceStopInd = np.append(self._sliceStopInd, self._periStimStopInd).astype(int)
-        self._sliceStartInd, self._sliceStopInd = util.mergeTrials(
-            self._sliceStartInd, self._sliceStopInd)
+        stimTtlPath = os.path.join(self.save_dir, self.stim_ttl_fname)
+        stimTtlDict = np.load(stimTtlPath, allow_pickle=True, encoding='latin1').item()
+        for i, key in enumerate(self.periStimExtractionKeys):
+            periStimTtls = stimTtlDict[key]
+            periStimPreDurationUt = int(round(self.periStimPreDurationSecs[i] * self._sampling_rate))
+            periStimTotDurationUt = int(round(self.periStimTotDurationSecs[i] * self._sampling_rate))
+            periStimStartInd = periStimTtls - periStimPreDurationUt
+            periStimStartInd -= self.data_start_time
+            periStimStopInd = periStimStartInd + periStimTotDurationUt
+            self._sliceStartInd = np.append(self._sliceStartInd, periStimStartInd).astype(int)
+            self._sliceStopInd = np.append(self._sliceStopInd, periStimStopInd).astype(int)
+        self._sliceStartInd, self._sliceStopInd = util.mergeOverlappedTrials(
+            self._sliceStartInd, self._sliceStopInd, self.sliceLenUt)
     
     def _get_cur_data(self):
         """To get the data of current slice."""
@@ -339,26 +355,30 @@ class extract_NP_MUA:
                 os.remove(tmp_file)
             except AttributeError:
                 pass
-        self.cur_data = np.memmap(
-            tmp_file,
-            dtype=np.int16,
-            mode="w+",
-            shape=self.raw_data[:, self._cur_start : self._cur_stop].shape,
-        )
-        t1 = time()
-        print("Open file time: {:.2f}s".format(t1 - t0))
-        self.cur_data[:] = self.raw_data[:, self._cur_start : self._cur_stop]
-        t2 = time()
-        print("Copy raw data slice time: {:.2f}s".format(t2 - t1))
-
-        # subtract the common average reference
-        self._median_subtraction(0)
-        t3 = time()
-        print("Done subtracting axis-0 median: {:.2f}s".format(t3 - t2))
-        # offset correction for Phase3A probes
-        self._median_subtraction(1)
-        t4 = time()
-        print("Done subtracting axis-1 median: {:.2f}s".format(t4 - t3))
+        try:
+            self.cur_data = np.memmap(
+                tmp_file,
+                dtype=np.int16,
+                mode="w+",
+                shape=self.raw_data[:, self._cur_start : self._cur_stop].shape,
+            )
+            t1 = time()
+            print("Open file time: {:.2f}s".format(t1 - t0))
+            self.cur_data[:] = self.raw_data[:, self._cur_start : self._cur_stop]
+            t2 = time()
+            print("Copy raw data slice time: {:.2f}s".format(t2 - t1))
+    
+            # subtract the common average reference
+            self._median_subtraction(0)
+            t3 = time()
+            print("Done subtracting axis-0 median: {:.2f}s".format(t3 - t2))
+            # offset correction for Phase3A probes
+            self._median_subtraction(1)
+            t4 = time()
+            print("Done subtracting axis-1 median: {:.2f}s".format(t4 - t3))
+        except ValueError:
+            self._curSliceIsEmpty = True
+            print('Current slice is empty!')
 
     def _get_spiketimes(self, slice_idx):
         """To detect and extract the spiketimes (MUA).
