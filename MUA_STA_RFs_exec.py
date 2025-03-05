@@ -36,15 +36,15 @@ pix_data = mua.extract_NP_MUA(
     fname_extensions=(None, None),  # The labels (prefix and postfix) for the files to be saved. Postfix is useful in case there are multiple probes.
     total_ch=384,  # The total number of Neuropixels channels in use.
     spike_event_std_thresh=-4,  # The multiple of standard deviation of Butterworth bandpass filtered signals to be considered as spiking events.
-    extract_start_time=None,  # The start time (in unit time) of the data to be extracted. If None, the data will be extracted from the beginning.
-    extract_stop_time=None,  # The end time (in unit time) of the data to be extracted. If None, the data will be extracted until the end.
+    extractStartTimeSec=None,  # The start time (in second) of the data to be extracted. If None, the data will be extracted from the beginning.
+    extractStopTimeSec=None,  # The end time (in second) of the data to be extracted. If None, the data will be extracted until the end.
     event_keys=[
         (1, "locally_sparse_noise"),
         (2, "starts"),
         (3, "sync"),
         (4, "stops"),
     ],  # List containing tuples of channel states (int) and their corresponding TTL keys.
-    slice_len=None,  # int, the length (in second) for slicing the data, in case the data size is too big.
+    sliceLenSec=None,  # int, the length (in second) for slicing the data, in case the data size is too big.
     align_to_probe_timestamps=False,  # If True, the stim TTLs in stim_ttl_dir will be aligned to NP probe timestamps (sync TTLs in probe_ttl_dir).
     stim_sync_ch=1,  # The channel state for the sync channel of the stimulus TTLs.
     probe_sync_ch=1,  # The channel state for the sync channel of the probe TTLs.
