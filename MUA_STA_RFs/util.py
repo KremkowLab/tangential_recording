@@ -613,7 +613,7 @@ def getLatestFilePath(folder, files):
         raise ValueError(f"No matching file in the folder {folder}.")
     return latestPath
 
-def mergeTrials(starts, stops):
+def mergeOverlappedTrials(starts, stops, maxDuration=None):
     intervals = sorted(zip(starts, stops))
     mergedIntervals = []
     for curStart, curStop in intervals:
@@ -625,8 +625,24 @@ def mergeTrials(starts, stops):
             mergedIntervals.append((curStart, curStop))
         else:
             mergedIntervals[-1] = (prevStart, max(prevStop, curStop))
+    if maxDuration is not None:
+        mergedIntervals = splitTrials(mergedIntervals, maxDuration)
     starts, stops = zip(*mergedIntervals)
     return np.array(starts), np.array(stops)
+
+def splitTrials(trials, maxDuration):
+    splittedTrials = []
+    for start, stop in trials:
+        duration = stop - start
+        if duration <= maxDuration:
+            splittedTrials.append((start, stop))
+        else:
+            curStart = start
+            while curStart < stop:
+                curStop = min(curStart + maxDuration, stop)
+                splittedTrials.append((curStart, curStop))
+                curStart = curStop
+    return splittedTrials
 
 
 # =============================================================================
