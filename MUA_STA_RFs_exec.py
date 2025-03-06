@@ -29,27 +29,32 @@ fig_size_pix = None  # (width, height) or None. The size of the figure (STA RFs)
 
 #%% Extract MUA from Neuropixels data
 
-pix_data = mua.extract_NP_MUA(
+pix_data = mua.neuropixData(
     stim_ttl_dir,  # The folder path of the stimulus TTLs (path until .../TTL_1).
     raw_data_dir,  # The folder path of raw data (path until .../Neuropix-3a-100.0).
     save_dir,  # The folder path for saving the outputs.
     fname_extensions=(None, None),  # The labels (prefix and postfix) for the files to be saved. Postfix is useful in case there are multiple probes.
     total_ch=384,  # The total number of Neuropixels channels in use.
-    spike_event_std_thresh=-4,  # The multiple of standard deviation of Butterworth bandpass filtered signals to be considered as spiking events.
-    extractStartTimeSec=None,  # The start time (in second) of the data to be extracted. If None, the data will be extracted from the beginning.
-    extractStopTimeSec=None,  # The end time (in second) of the data to be extracted. If None, the data will be extracted until the end.
     event_keys=[
         (1, "locally_sparse_noise"),
         (2, "starts"),
         (3, "sync"),
         (4, "stops"),
     ],  # List containing tuples of channel states (int) and their corresponding TTL keys.
-    sliceLenSec=None,  # int, the length (in second) for slicing the data, in case the data size is too big.
     align_to_probe_timestamps=False,  # If True, the stim TTLs in stim_ttl_dir will be aligned to NP probe timestamps (sync TTLs in probe_ttl_dir).
     stim_sync_ch=1,  # The channel state for the sync channel of the stimulus TTLs.
     probe_sync_ch=1,  # The channel state for the sync channel of the probe TTLs.
     probe_ttl_dir=probe_ttl_dir,  # The folder path of the probe TTLs.
-    n_cores=int(os.cpu_count() / 2)  # The number of CPUs to be used for parallel computing. Spare some CPUs so that the computer is not slowed down for other processes.
+)
+pix_data.extractMua(
+    spike_event_std_thresh=-4,  # The multiple of standard deviation of Butterworth bandpass filtered signals to be considered as spiking events.
+    extractStartTimeSec=None,  # The start time (in second, Neuropixels time) of the data to be extracted. If None, the data will be extracted from the beginning.
+    extractStopTimeSec=None,  # The end time (in second, Neuropixels time) of the data to be extracted. If None, the data will be extracted until the end.
+    sliceLenSec=None,  # int, the length (in second) for slicing the data, in case the data size is too big.
+    periStimExtractionKeys=None,   # list or None. The event/TTL keys for extracting the peri-stimulus MUA (instead of extracting everything). Any overlapping slices will be merged.
+    periStimPreDurationSecs=[10],   # list of int or float. The durations (correspond to periStimExtractionKeys) in second before the stimulus onsets/TTLs for the peri-stimulus extraction.
+    periStimTotDurationSecs=[20],   # list of int or float. The total durations (correspond to periStimExtractionKeys) in second for the peri-stimulus extraction.
+    n_cores=int(os.cpu_count()/2)  # The number of CPUs to be used for parallel computing. Spare some CPUs so that the computer is not slowed down for other processes.
 )
 
 
