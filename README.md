@@ -11,6 +11,8 @@ Alternatively, run `MUA_extraction_PSTH.py` (no RF estimation) to:
 1. extract the MUA from the Neuropixels recording, and
 2. compute the PSTH of the MUA for each channel of the probe to see the effects of specified stimuli.
 
+`MUA_extraction_PSTH_spikeGLX.py` gives an example of extracting data recorded with [SpikeGLX](https://billkarsh.github.io/SpikeGLX/).
+
 **Software:** 
 1. *Requirements:* Python 3, [PsychoPy toobox](https://www.psychopy.org/download.html)
 2. An example of a [short Neuropixels recording](https://zenodo.org/records/6850116#.YtQNq4RBzQM) (3.5 GB) is provided as a reference for calibration purposes.
