@@ -13,7 +13,7 @@ import os
 from . import util
 
 
-class extract_NP_MUA:
+class neuropixData:
     _signal_lowcut = 300  # the low cut of the signal frequency
     _signal_highcut = 3000  # the high cut of the signal frequency
     _butter_bandpass_order = 2  # the order for the Butterworth bandpass filter
@@ -30,20 +30,12 @@ class extract_NP_MUA:
         raw_data_fname=None,
         fname_extensions=(None, None),
         total_ch=384,
-        spike_event_std_thresh=-4,
-        extractStartTimeSec=None,
-        extractStopTimeSec=None,
         event_keys=[(1, "sync"), (2, "starts"), (3, "frametimes"), (4, "stops")],
-        sliceLenSec=None,
-        periStimExtractionKeys=None,
-        periStimPreDurationSecs=[10],
-        periStimTotDurationSecs=[20],
         align_to_probe_timestamps=True,
         stim_sync_ch=1,
         probe_sync_ch=1,
         probe_ttl_dir="",
         isSpikeGlx=False, 
-        n_cores=os.cpu_count(),
     ):
         """To extract the TTLs/timestamps and MUA from raw Neuropixels data.
         PARAMETERS
@@ -60,30 +52,10 @@ class extract_NP_MUA:
             The labels (prefix and postfix) for the files to be saved.
         total_ch : int
             The total number of Neuropixels channels in use.
-        spike_event_std_thresh : int or float
-            The multiple of standard deviation of Butterworth bandpass filtered
-            signals to be considered as spiking events.
-        extractStartTimeSec : int or None
-            The start time (in second) of the data to be extracted.
-            If None, the data will be extracted from the beginning.
-        extractStopTimeSec : int or None
-            The end time (in second) of the data to be extracted.
-            If None, the data will be extracted until the end.
         event_keys : list
             List containing tuples of channel states (int) and their corresponding
             TTL keys (str: 'starts', 'frametimes', 'stops', 'camera', etc.).
             E.g. [(1, 'starts'), (2, 'stim_frametimes'), ...].
-        sliceLenSec : int
-            The length (in second) for slicing the data, in case the data size is too big.
-        periStimExtractionKeys : list or None
-            The event/TTL key for extracting the peri-stimulus MUA 
-            (instead of extracting everything). Any overlapping slices will be
-            merged.
-        periStimPreDurationSecs : list of int or float
-            The duration in second before the stimulus onsets/TTLs for the 
-            peri-stimulus extraction.
-        periStimTotDurationSecs : list of int or float
-            The total duration in second for the peri-stimulus extraction.
         align_to_probe_timestamps : bool
             If True, the stimulus TTLs/timestamps will be aligned to the probe's
             clock (via probe sync TTLs) to compensate for the offsets in sampling rate.
@@ -93,8 +65,9 @@ class extract_NP_MUA:
             The channel state for the sync channel of the probe TTLs.
         probe_ttl_dir : str
             The folder path of the probe TTLs.
-        n_cores : int
-            The number of CPUs to be used for parallel computing.
+        isSpikeGlx : bool
+            If True, the total data channels will be total_ch - 1, because 
+            the last channel is the sync channel.
         """
         self.stim_ttl_dir = stim_ttl_dir
         self.raw_data_dir = raw_data_dir
@@ -104,19 +77,54 @@ class extract_NP_MUA:
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
         self.total_ch = total_ch
-        self.spike_event_std_thresh = spike_event_std_thresh
-        self.extractStartTimeSec = extractStartTimeSec
-        self.extractStopTimeSec = extractStopTimeSec
         self.event_keys = event_keys
-        self.sliceLenSec = sliceLenSec
-        self.periStimExtractionKeys = periStimExtractionKeys
-        self.periStimPreDurationSecs = periStimPreDurationSecs
-        self.periStimTotDurationSecs = periStimTotDurationSecs
         self.align_to_probe_timestamps = align_to_probe_timestamps
         self.stim_sync_ch = stim_sync_ch
         self.probe_sync_ch = probe_sync_ch
         self.probe_ttl_dir = probe_ttl_dir
         self.isSpikeGlx = isSpikeGlx
+        self._alignAndExtractTimestamps()
+        
+    def extractMua(
+            self, spike_event_std_thresh=-4, extractStartTimeSec=None,
+            extractStopTimeSec=None, sliceLenSec=None, periStimExtractionKeys=None,
+            periStimPreDurationSecs=[10], periStimTotDurationSecs=[20], 
+            n_cores=int(os.cpu_count()/2)):
+        """To extract spike times (MUA).
+        PARAMETERS
+        ----------
+        spike_event_std_thresh : int or float
+            The multiple of standard deviation of Butterworth bandpass filtered
+            signals to be considered as spiking events.
+        extractStartTimeSec : int or None
+            The start time (in second, Neuropixels time) of the data to be extracted.
+            If None, the data will be extracted from the beginning.
+        extractStopTimeSec : int or None
+            The end time (in second, Neuropixels time) of the data to be extracted.
+            If None, the data will be extracted until the end.
+        sliceLenSec : int
+            The length (in second) for slicing the data, in case the data size is too big.
+        periStimExtractionKeys : list or None
+            The event/TTL keys for extracting the peri-stimulus MUA 
+            (instead of extracting everything). Any overlapping slices will be
+            merged. Only the data within the extract start and stop times will
+            be extracted.
+        periStimPreDurationSecs : list of int or float
+            The durations (correspond to periStimExtractionKeys) in second 
+            before the stimulus onsets/TTLs for the peri-stimulus extraction.
+        periStimTotDurationSecs : list of int or float
+            The total durations (correspond to periStimExtractionKeys) 
+            in second for the peri-stimulus extraction.
+        n_cores : int
+            The number of CPUs to be used for parallel computing.
+        """
+        self.spike_event_std_thresh = spike_event_std_thresh
+        self.extractStartTimeSec = extractStartTimeSec
+        self.extractStopTimeSec = extractStopTimeSec
+        self.sliceLenSec = sliceLenSec
+        self.periStimExtractionKeys = periStimExtractionKeys
+        self.periStimPreDurationSecs = periStimPreDurationSecs
+        self.periStimTotDurationSecs = periStimTotDurationSecs
         self._n_cores = max(1, n_cores)
         if self.extractStartTimeSec is not None:
             self.extractStartTimeUt = int(round(
@@ -124,15 +132,19 @@ class extract_NP_MUA:
         if self.extractStopTimeSec is not None:
             self.extractStopTimeUt = int(round(
                 self.extractStopTimeSec * self._sampling_rate))
-        self._alignTimestampsAndExtract()
         
-    def _alignTimestampsAndExtract(self):
+        if not os.path.exists(os.path.join(self.save_dir, self.spiketimes_fname)):
+            self._start_extract_spikes()
+            print("All spiketimes saved!")
+        else:
+            print("Spiketimes exists!")
+        
+    def _alignAndExtractTimestamps(self):
         if self.raw_data_fname is None:
             self.raw_data_fname = "continuous.dat"
         self.rawDataPath = os.path.join(self.raw_data_dir, self.raw_data_fname)
         self.totalDataCh = self.total_ch
         if self.isSpikeGlx:
-            self.rawDataPath = os.path.join(self.raw_data_dir, self.raw_data_fname)
             self.totalDataCh -= 1   # the last channel is sync channel
             util.genDataTimestamps(self.rawDataPath, self.total_ch)
             util.saveCsvToNeuropixTimestampsFormat(
@@ -157,8 +169,8 @@ class extract_NP_MUA:
             self.stim_unitTimestamps_fpath = os.path.join(
                 self.stim_ttl_dir, self.unitTimestamps_fname)
             print("The aligned stimulus TTL folder is {}.".format(self.stim_ttl_dir))
-        self._extract()
-
+        self._extractTtls()
+        
     def _get_output_filename(self, fname_extensions=None):
         """To get the filename for stimulus TTLs and MUA spiketimes."""
         if fname_extensions:
@@ -181,20 +193,14 @@ class extract_NP_MUA:
             self.stim_ttl_dir, latest_to_oldest_unitTimestamps_fnames)
         _, self.chState_fname = os.path.split(self.stim_chState_fpath)
         _, self.unitTimestamps_fname = os.path.split(self.stim_unitTimestamps_fpath)
-
-    def _extract(self):
-        """To extract the stimulus TTLs/timestamps and spike times (MUA)."""
+        
+    def _extractTtls(self):
         if not os.path.exists(os.path.join(self.save_dir, self.stim_ttl_fname)):
             self._get_stim_ttl()
             self.save(self.stim_ttl_dict, self.stim_ttl_fname)
             print("Done extracting stimulus TTLs!")
         else:
             print("Stimulus TTLs exists!")
-        if not os.path.exists(os.path.join(self.save_dir, self.spiketimes_fname)):
-            self._start_extract_spikes()
-            print("All spiketimes saved!")
-        else:
-            print("Spiketimes exists!")
 
     def _get_stim_ttl(self):
         """To get the stimulus TTLs/timestamps."""
@@ -244,32 +250,35 @@ class extract_NP_MUA:
         )
         self.raw_data = np.memmap(self.rawDataPath, dtype=np.int16, mode="r")
         self.raw_data = self.raw_data.reshape((self.total_ch, -1), order="F")
+        self.rawDataLen = self.raw_data.shape[1]
 
     def _flatten_timestamps(self):
-        """To correct the raw_data_timestamps (if any mistakes) and get the data_start_time and total_timestamp_len."""
+        """To correct the raw_data_timestamps (if any mistakes) and get the 
+        data_start_time and total_timestamp_len.
+        """
         (self.data_start_time, self.total_timestamp_len
          ) = util.get_rawdata_timestamps_info(self.raw_data_timestamps)
         start_zero = self.data_start_time == 0
-        correct_ideal_len = self.raw_data.shape[1] - self.total_timestamp_len == 0
+        correct_ideal_len = self.rawDataLen - self.total_timestamp_len == 0
         correct_time_len = (
             self.total_timestamp_len - self.raw_data_timestamps.shape[0] == 0
         )
         if start_zero:
-            self.raw_data_timestamps = np.arange(self.raw_data.shape[1])
+            self.raw_data_timestamps = np.arange(self.rawDataLen)
         else:
             if not correct_ideal_len:
                 if (
                     self.data_start_time + self.total_timestamp_len
-                    == self.raw_data.shape[1]
+                    == self.rawDataLen
                 ):
-                    self.raw_data_timestamps = np.arange(self.raw_data.shape[1])
+                    self.raw_data_timestamps = np.arange(self.rawDataLen)
                 else:
                     util.get_action(
                         "First timestamp (data_start_time): {}\n"
                         "The raw data ({}) and timestamps ({}) lengths"
                         " are not consistent!".format(
                             self.data_start_time,
-                            self.raw_data.shape[1],
+                            self.rawDataLen,
                             self.total_timestamp_len,
                         )
                     )
@@ -277,35 +286,37 @@ class extract_NP_MUA:
                 if not correct_time_len:
                     self.raw_data_timestamps = np.arange(
                         self.data_start_time,
-                        self.data_start_time + self.raw_data.shape[1],
+                        self.data_start_time + self.rawDataLen,
                     )
     
     def _getSliceInd(self):
-        extract_start_idx = (
+        self.extractStartIdx = (
             0
             if not self.extractStartTimeSec
             else self.extractStartTimeUt - self.data_start_time
         )
-        extract_stop_idx = (
-            self.raw_data.shape[1]
+        self.extractStopIdx = (
+            self.rawDataLen
             if not self.extractStopTimeSec
             else self.extractStopTimeUt - self.data_start_time
         )
+        self.extractStartIdx = np.clip(
+            self.extractStartIdx, a_min=0, a_max=self.rawDataLen)
+        self.extractStopIdx = np.clip(
+            self.extractStopIdx, a_min=0, a_max=self.rawDataLen)
         if self.sliceLenSec:
             self.sliceLenUt = self.sliceLenSec * self._sampling_rate
-            ind = np.arange(extract_start_idx, extract_stop_idx, self.sliceLenUt)
-            sliceInd = np.append(ind, extract_stop_idx)
+            ind = np.arange(self.extractStartIdx, self.extractStopIdx, self.sliceLenUt)
+            sliceInd = np.append(ind, self.extractStopIdx)
         else:
-            sliceInd = np.array([extract_start_idx, extract_stop_idx])
+            self.sliceLenUt = None
+            sliceInd = np.array([self.extractStartIdx, self.extractStopIdx])
         self._sliceStartInd = sliceInd[:-1]
         self._sliceStopInd = sliceInd[1:]
         
-        hasSpecifiedExtraction = self.extractStartTimeSec is not None or \
-            self.extractStopTimeSec is not None
         if self.periStimExtractionKeys is not None:
-            if not hasSpecifiedExtraction:
-                self._sliceStartInd = []
-                self._sliceStopInd = []
+            self._sliceStartInd = []
+            self._sliceStopInd = []
             self._addPeriStimSliceInd()
         slices = list(zip(self._sliceStartInd, self._sliceStopInd))
         print(
@@ -327,6 +338,10 @@ class extract_NP_MUA:
             periStimStopInd = periStimStartInd + periStimTotDurationUt
             self._sliceStartInd = np.append(self._sliceStartInd, periStimStartInd).astype(int)
             self._sliceStopInd = np.append(self._sliceStopInd, periStimStopInd).astype(int)
+        self._sliceStartInd = np.clip(
+            self._sliceStartInd, a_min=self.extractStartIdx, a_max=self.extractStopIdx)
+        self._sliceStopInd = np.clip(
+            self._sliceStopInd, a_min=self.extractStartIdx, a_max=self.extractStopIdx)
         self._sliceStartInd, self._sliceStopInd = util.mergeOverlappedTrials(
             self._sliceStartInd, self._sliceStopInd, self.sliceLenUt)
     
