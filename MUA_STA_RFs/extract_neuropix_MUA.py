@@ -18,7 +18,6 @@ class extract_NP_MUA:
     _signal_highcut = 3000  # the high cut of the signal frequency
     _butter_bandpass_order = 2  # the order for the Butterworth bandpass filter
     _sampling_rate = 30000  # the sampling rate of the Neuropixels probe
-    _truncateStimTtlWithExtraction = False
     _signal_orientation = (
         "negative"  # 'positive', 'negative', or 'both', the signal orientation for processing
     )
@@ -204,21 +203,7 @@ class extract_NP_MUA:
         timestamps = np.load(self.stim_unitTimestamps_fpath)
         for ch, key in self.event_keys:
             ch_timestamps = timestamps[channel_states==ch]
-            if self._truncateStimTtlWithExtraction:
-                start_t = self.extractStartTimeUt if self.extractStartTimeUt else 0
-                if self.extractStopTimeSec:
-                    self.stim_ttl_dict[key] = ch_timestamps[
-                        np.where(
-                            (ch_timestamps >= start_t)
-                            & (ch_timestamps <= self.extractStopTimeUt)
-                        )
-                    ]
-                else:
-                    self.stim_ttl_dict[key] = ch_timestamps[
-                        np.where(ch_timestamps >= start_t)
-                    ]
-            else:
-                self.stim_ttl_dict[key] = ch_timestamps
+            self.stim_ttl_dict[key] = ch_timestamps
 
     def _start_extract_spikes(self):
         """Start extract the spike times slice-by-slice."""
