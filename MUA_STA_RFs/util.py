@@ -644,6 +644,33 @@ def splitTrials(trials, maxDuration):
                 curStart = curStop
     return splittedTrials
 
+def mergeOpenEphysBinaryFiles(
+        saveDir, dataDirs, dataFilename='continuous.dat', 
+        timeFilename='timestamps.npy', nChs=384):
+    mergedFilePath = os.path.join(saveDir, dataFilename)
+    mergedTimePath = os.path.join(saveDir, timeFilename)
+    timeShiftPath = os.path.join(saveDir, 'timeshifts.npy')
+
+    mergedTimes = []
+    timeShifts = []
+    for d, dataDir in enumerate(dataDirs):
+        dataPath = os.path.join(dataDir, dataFilename)
+        timePath = os.path.join(dataDir, timeFilename)
+        data = np.memmap(dataPath, dtype='int16', mode='r')
+        timestamps = np.load(timePath, allow_pickle=True, encoding='latin1')
+        timeShift = timestamps[0] - mergedTimes[-1] - 1 if d > 0 else 0
+        timeShifts = np.append(timeShifts, timeShift).astype(int)
+        shiftedTimes = timestamps - timeShift
+        mergedTimes = np.append(mergedTimes, shiftedTimes).astype(int)
+        mode = 'wb' if d == 0 else 'a'   # wb: Write data to new file; a: Append data from other recordings to the same file
+        file = open(mergedFilePath, mode)
+        data.tofile(file)
+        file.close()
+    del data
+    np.save(mergedTimePath, mergedTimes)
+    np.save(timeShiftPath, timeShifts)
+    return mergedTimes, timeShifts
+
 
 # =============================================================================
 # SpikeGLX util
