@@ -653,6 +653,7 @@ def mergeOpenEphysBinaryFiles(
 
     mergedTimes = []
     timeShifts = []
+    dataLens = []
     for d, dataDir in enumerate(dataDirs):
         dataPath = os.path.join(dataDir, dataFilename)
         timePath = os.path.join(dataDir, timeFilename)
@@ -662,14 +663,21 @@ def mergeOpenEphysBinaryFiles(
         timeShifts = np.append(timeShifts, timeShift).astype(int)
         shiftedTimes = timestamps - timeShift
         mergedTimes = np.append(mergedTimes, shiftedTimes).astype(int)
+        dataLens = np.append(dataLens, len(timestamps))
         mode = 'wb' if d == 0 else 'a'   # wb: Write data to new file; a: Append data from other recordings to the same file
         file = open(mergedFilePath, mode)
         data.tofile(file)
         file.close()
     del data
+    timeShiftInfo = {}
+    timeShiftInfo['timeShifts'] = timeShifts
+    timeShiftInfo['timeShiftStarts'] = np.append(0, np.cumsum(dataLens[:-1])).astype(int)
     np.save(mergedTimePath, mergedTimes)
-    np.save(timeShiftPath, timeShifts)
-    return mergedTimes, timeShifts
+    np.save(timeShiftPath, timeShiftInfo)
+    print(f'\nThe merged data is saved at {mergedFilePath}')
+    print(f'The merged timestamps is saved at {mergedTimePath}')
+    print(f'The merged data time shifting info is saved at {timeShiftPath}')
+    return mergedTimes, timeShiftInfo
 
 
 # =============================================================================
