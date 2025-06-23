@@ -35,6 +35,7 @@ class neuropixData:
         stim_sync_ch=1,
         probe_sync_ch=1,
         probe_ttl_dir="",
+        chStep=1, 
         isSpikeGlx=False, 
     ):
         """To extract the TTLs/timestamps and MUA from raw Neuropixels data.
@@ -65,6 +66,8 @@ class neuropixData:
             The channel state for the sync channel of the probe TTLs.
         probe_ttl_dir : str
             The folder path of the probe TTLs.
+        chStep : int
+            The step in taking the channels to be extracted.
         isSpikeGlx : bool
             If True, the total data channels will be total_ch - 1, because 
             the last channel is the sync channel.
@@ -82,6 +85,7 @@ class neuropixData:
         self.stim_sync_ch = stim_sync_ch
         self.probe_sync_ch = probe_sync_ch
         self.probe_ttl_dir = probe_ttl_dir
+        self.chStep = chStep
         self.isSpikeGlx = isSpikeGlx
         self._alignAndExtractTimestamps()
         
@@ -153,6 +157,7 @@ class neuropixData:
                 util.saveCsvToNeuropixTimestampsFormat(
                     self.probe_ttl_dir, prefix='ttl_', 
                     samplingRate=self._sampling_rate)
+        self.totalDataCh = len(np.arange(0, self.totalDataCh, self.chStep))
         self._get_data_path_info()
         if self.align_to_probe_timestamps:
             # stim_ttl_dir is changed to a new stim_ttl_dir that contains the aligned TTLs
@@ -250,6 +255,7 @@ class neuropixData:
         )
         self.raw_data = np.memmap(self.rawDataPath, dtype=np.int16, mode="r")
         self.raw_data = self.raw_data.reshape((self.total_ch, -1), order="F")
+        self.raw_data = self.raw_data[::self.chStep]
         self.rawDataLen = self.raw_data.shape[1]
 
     def _flatten_timestamps(self):
