@@ -41,7 +41,7 @@ pix_data = mua.neuropixData(
         (3, "sync"),
         (4, "stops"),
     ],  # List containing tuples of channel states (int) and their corresponding TTL keys.
-    align_to_probe_timestamps=True,  # If True, the stim TTLs in stim_ttl_dir will be aligned to NP probe timestamps (sync TTLs in probe_ttl_dir).
+    align_to_probe_timestamps=False,  # If True, the stim TTLs in stim_ttl_dir will be aligned to NP probe timestamps (sync TTLs in probe_ttl_dir).
     stim_sync_ch=1,  # The channel state for the sync channel of the stimulus TTLs.
     probe_sync_ch=1,  # The channel state for the sync channel of the probe TTLs.
     probe_ttl_dir=probe_ttl_dir,  # The folder path of the probe TTLs.
