@@ -237,7 +237,8 @@ class neuropixData:
             for timeInfo in self.toBeAlignedTimestampsInfo:
                 key, timesPath, statesOrInfoPath = timeInfo
                 times = np.load(timesPath, allow_pickle=True, encoding='latin1')
-                info = np.load(statesOrInfoPath, allow_pickle=True, encoding='latin1')
+                info = None if statesOrInfoPath is None else \
+                    np.load(statesOrInfoPath, allow_pickle=True, encoding='latin1')
                 alignedTimes = util.align_timestamps(times, timeSync, refSync)
                 self.stim_ttl_dict[key] = {}
                 self.stim_ttl_dict[key]['alignedTimes'] = alignedTimes
