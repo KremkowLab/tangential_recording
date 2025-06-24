@@ -36,6 +36,7 @@ class neuropixData:
         probe_sync_ch=1,
         probe_ttl_dir="",
         chStep=1, 
+        toBeAlignedTimestampsInfo=None,
         isSpikeGlx=False, 
     ):
         """To extract the TTLs/timestamps and MUA from raw Neuropixels data.
@@ -68,6 +69,13 @@ class neuropixData:
             The folder path of the probe TTLs.
         chStep : int
             The step in taking the channels to be extracted.
+        toBeAlignedTimestampsInfo : list or None
+            A list containing tuples of additional timestamps (besides the TTLs)
+            file info to be aligned. The timestamps are assumed to be at the 
+            same clock as the stimulus TTLs and will be aligned to the probe's
+            clock time.
+            E.g., [(key1, timestampsPath1, statesOrInfoPath1), 
+                   (key2, timestampsPath2, statesOrInfoPath2), ...]
         isSpikeGlx : bool
             If True, the total data channels will be total_ch - 1, because 
             the last channel is the sync channel.
@@ -86,6 +94,7 @@ class neuropixData:
         self.probe_sync_ch = probe_sync_ch
         self.probe_ttl_dir = probe_ttl_dir
         self.chStep = chStep
+        self.toBeAlignedTimestampsInfo = toBeAlignedTimestampsInfo
         self.isSpikeGlx = isSpikeGlx
         self._alignAndExtractTimestamps()
         
@@ -160,6 +169,9 @@ class neuropixData:
         self.totalDataCh = len(np.arange(0, self.totalDataCh, self.chStep))
         self._get_data_path_info()
         if self.align_to_probe_timestamps:
+            # align additional timestamps first before changing the stim_ttl_dir
+            self._alignExtraTimestamps()
+            
             # stim_ttl_dir is changed to a new stim_ttl_dir that contains the aligned TTLs
             self.stim_ttl_dir = util.align_and_save_timestamps(
                 self.stim_sync_ch,
@@ -199,6 +211,38 @@ class neuropixData:
         _, self.chState_fname = os.path.split(self.stim_chState_fpath)
         _, self.unitTimestamps_fname = os.path.split(self.stim_unitTimestamps_fpath)
         
+    def _alignExtraTimestamps(self):
+        """The timestamps to be aligned are assumed to be at the same clock as 
+        the stimulus TTLs and will be aligned to the probe's clock time.
+        """
+        if self.toBeAlignedTimestampsInfo is not None:
+            assert isinstance(self.toBeAlignedTimestampsInfo, list), \
+                'The toBeAlignedTimestampsInfo should be a list of tuples.'
+            assert len(self.probe_ttl_dir) > 0, 'No probe_ttl_dir is specified!'
+            
+            stim_chState_fpath = os.path.join(
+                self.stim_ttl_dir, self.chState_fname)
+            stim_timestamps_fpath = os.path.join(
+                self.stim_ttl_dir, self.unitTimestamps_fname)
+            ref_chState_fpath = os.path.join(
+                self.probe_ttl_dir, self.chState_fname)
+            ref_timestamps_fpath = os.path.join(
+                self.probe_ttl_dir, self.unitTimestamps_fname)
+            timeSync, _ = util.get_timestamps(
+                stim_timestamps_fpath, stim_chState_fpath, self.stim_sync_ch)
+            refSync, _ = util.get_timestamps(
+                ref_timestamps_fpath, ref_chState_fpath, self.probe_sync_ch)
+            
+            self.stim_ttl_dict = {}
+            for timeInfo in self.toBeAlignedTimestampsInfo:
+                key, timesPath, statesOrInfoPath = timeInfo
+                times = np.load(timesPath, allow_pickle=True, encoding='latin1')
+                info = np.load(statesOrInfoPath, allow_pickle=True, encoding='latin1')
+                alignedTimes = util.align_timestamps(times, timeSync, refSync)
+                self.stim_ttl_dict[key] = {}
+                self.stim_ttl_dict[key]['alignedTimes'] = alignedTimes
+                self.stim_ttl_dict[key]['info'] = info
+        
     def _extractTtls(self):
         if not os.path.exists(os.path.join(self.save_dir, self.stim_ttl_fname)):
             self._get_stim_ttl()
@@ -209,7 +253,8 @@ class neuropixData:
 
     def _get_stim_ttl(self):
         """To get the stimulus TTLs/timestamps."""
-        self.stim_ttl_dict = {}
+        if not 'stim_ttl_dict' in self.__dict__:
+            self.stim_ttl_dict = {}
         channel_states = np.load(self.stim_chState_fpath)
         timestamps = np.load(self.stim_unitTimestamps_fpath)
         for ch, key in self.event_keys:
