@@ -549,6 +549,25 @@ def mapPsthsToShank(psths, chMap, emptyVal=np.nan):
         chMappedPsths[shankIdxArr, shankChInd] = psths[shankMask]
     return chMappedPsths
 
+def getCurrentSourceDensity(
+        fieldPotential, samplingIntervalUm=100, nInterv=2, chSeparationUm=10):
+    """The second spatial derivative of the field potential profile (Swadlow et al., 2002)
+    
+    fieldPotential : array-like, 2D
+       The (average) local field potential to be used for computing CSD.
+       Shape = (nCh, nTime).
+    chSeparationUm : int or float
+        The average separation of the probe channels in micron.
+    """
+    diffGrid = nInterv * samplingIntervalUm
+    nDiffGridCh = int(round(diffGrid / chSeparationUm))
+    nCh, nTime = fieldPotential
+    nValidCsdCh = nCh - 2 * nDiffGridCh
+    csd = fieldPotential[:-nValidCsdCh] + fieldPotential[nValidCsdCh:] \
+        - 2 * fieldPotential[nDiffGridCh:-nDiffGridCh]
+    csd /= diffGrid ** 2
+    return csd
+
 
 # =============================================================================
 # Miscellaneous
