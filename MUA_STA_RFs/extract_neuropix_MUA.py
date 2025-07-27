@@ -213,7 +213,8 @@ class neuropixData:
         
     def _alignExtraTimestamps(self):
         """The timestamps to be aligned are assumed to be at the same clock as 
-        the stimulus TTLs and will be aligned to the probe's clock time.
+        the stimulus TTLs (unless specified) and will be aligned to the 
+        probe's clock time.
         """
         if self.toBeAlignedTimestampsInfo is not None:
             assert isinstance(self.toBeAlignedTimestampsInfo, list), \
@@ -228,17 +229,24 @@ class neuropixData:
                 self.probe_ttl_dir, self.chState_fname)
             ref_timestamps_fpath = os.path.join(
                 self.probe_ttl_dir, self.unitTimestamps_fname)
-            timeSync, _ = util.get_timestamps(
+            stimTimeSync, _ = util.get_timestamps(
                 stim_timestamps_fpath, stim_chState_fpath, self.stim_sync_ch)
             refSync, _ = util.get_timestamps(
                 ref_timestamps_fpath, ref_chState_fpath, self.probe_sync_ch)
             
             self.stim_ttl_dict = {}
             for timeInfo in self.toBeAlignedTimestampsInfo:
-                key, timesPath, statesOrInfoPath = timeInfo
+                key, timesPath, infoPath, syncDirPath, syncCh = timeInfo
+                if syncDirPath is None:
+                    timeSync = stimTimeSync
+                else:
+                    syncTimePath = os.path.join(syncDirPath, self.unitTimestamps_fname)
+                    syncChStatePath = os.path.join(syncDirPath, self.chState_fname)
+                    timeSync, _ = util.get_timestamps(
+                        syncTimePath, syncChStatePath, syncCh)
                 times = np.load(timesPath, allow_pickle=True, encoding='latin1')
-                info = None if statesOrInfoPath is None else \
-                    np.load(statesOrInfoPath, allow_pickle=True, encoding='latin1')
+                info = None if infoPath is None else \
+                    np.load(infoPath, allow_pickle=True, encoding='latin1')
                 alignedTimes = util.align_timestamps(times, timeSync, refSync)
                 self.stim_ttl_dict[key] = {}
                 self.stim_ttl_dict[key]['alignedTimes'] = alignedTimes
