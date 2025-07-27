@@ -16,10 +16,17 @@ recordingPath = '.../rf_mapping_LIN-20250623T142337Z-1-001/rf_mapping_LIN'
 stim_ttl_dir = os.path.join(recordingPath, "NI-DAQmx-102.PXIe-6341/TTL")
 raw_data_dir = os.path.join(recordingPath, "2019-07-18_13-16-40/2019-07-18_13-16-40/experiment1/recording1/continuous/Neuropix-PXI-100.0")
 probe_ttl_dir = os.path.join(recordingPath, 'Neuropix/TTL-20250623T144951Z-1-001/TTL')
+save_dir = os.path.join(recordingPath, 'test_outputs')
+
+# =============================================================================
+# For extra time alignments
+# =============================================================================
+
 timePath = os.path.join(recordingPath, 'MessageCenter/sample_numbers.npy')
 infoPath = os.path.join(recordingPath, 'MessageCenter/text.npy')
-toBeAlignedTimestampsInfo = [('MessageCenter', timePath, infoPath), ]   # [(key1, timestampsPath1, statesOrInfoPath1), ...]
-save_dir = os.path.join(recordingPath, 'test_outputs')
+syncDirPath = None
+syncCh = 1
+toBeAlignedTimestampsInfo = [('MessageCenter', timePath, infoPath, syncDirPath, syncCh), ]   # [(key1, timestampsPath1, statesOrInfoPath1, syncDirPath1, syncCh1), ...]
 
 
 #%% Extract MUA from Neuropixels data
