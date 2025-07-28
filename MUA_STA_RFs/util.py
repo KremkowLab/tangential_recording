@@ -565,7 +565,7 @@ def getCurrentSourceDensity(
     nValidCsdCh = nCh - 2 * nDiffGridCh
     csd = fieldPotential[:nValidCsdCh] + fieldPotential[-nValidCsdCh:] \
         - 2 * fieldPotential[nDiffGridCh:-nDiffGridCh]
-    csd /= diffGrid ** 2
+    csd = csd / diffGrid ** 2
     return csd
 
 
