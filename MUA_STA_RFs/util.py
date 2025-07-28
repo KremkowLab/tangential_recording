@@ -561,9 +561,9 @@ def getCurrentSourceDensity(
     """
     diffGrid = nInterv * samplingIntervalUm
     nDiffGridCh = int(round(diffGrid / chSeparationUm))
-    nCh, nTime = fieldPotential
+    nCh, nTime = fieldPotential.shape
     nValidCsdCh = nCh - 2 * nDiffGridCh
-    csd = fieldPotential[:-nValidCsdCh] + fieldPotential[nValidCsdCh:] \
+    csd = fieldPotential[:nValidCsdCh] + fieldPotential[-nValidCsdCh:] \
         - 2 * fieldPotential[nDiffGridCh:-nDiffGridCh]
     csd /= diffGrid ** 2
     return csd
