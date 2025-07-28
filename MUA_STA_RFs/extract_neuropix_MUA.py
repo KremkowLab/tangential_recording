@@ -148,9 +148,9 @@ class neuropixData:
         
         if not os.path.exists(os.path.join(self.save_dir, self.spiketimes_fname)):
             self._start_extract_spikes()
-            print("All spiketimes saved!")
+            print("\nAll spiketimes saved!")
         else:
-            print("Spiketimes exists!")
+            print("\nSpiketimes exists!")
         
     def _alignAndExtractTimestamps(self):
         if self.raw_data_fname is None:
@@ -185,7 +185,7 @@ class neuropixData:
                 self.stim_ttl_dir, self.chState_fname)
             self.stim_unitTimestamps_fpath = os.path.join(
                 self.stim_ttl_dir, self.unitTimestamps_fname)
-            print("The aligned stimulus TTL folder is {}.".format(self.stim_ttl_dir))
+            print("\nThe aligned stimulus TTL folder is {}.".format(self.stim_ttl_dir))
         self._extractTtls()
         
     def _get_output_filename(self, fname_extensions=None):
@@ -256,9 +256,9 @@ class neuropixData:
         if not os.path.exists(os.path.join(self.save_dir, self.stim_ttl_fname)):
             self._get_stim_ttl()
             self.save(self.stim_ttl_dict, self.stim_ttl_fname)
-            print("Done extracting stimulus TTLs!")
+            print("\nDone extracting stimulus TTLs!")
         else:
-            print("Stimulus TTLs exists!")
+            print("\nStimulus TTLs exists!")
 
     def _get_stim_ttl(self):
         """To get the stimulus TTLs/timestamps."""
@@ -277,6 +277,7 @@ class neuropixData:
         self._getSliceInd()
         self._curSliceIsEmpty = False
         for n, start in enumerate(self._sliceStartInd, 1):
+            print('\nExtracting spike times...')
             if not os.path.exists(os.path.join(self.save_dir, "slice{}.npy".format(n))):
                 t1 = time()
                 self._cur_start = start
@@ -380,7 +381,7 @@ class neuropixData:
             self._addPeriStimSliceInd()
         slices = list(zip(self._sliceStartInd, self._sliceStopInd))
         print(
-            f"Slices (unit time): {slices}\nTotal number of slices: {len(slices)}")
+            f"\nSlices (unit time): {slices}\nTotal number of slices: {len(slices)}")
     
     def _addPeriStimSliceInd(self):
         """Add the peri-stimulus slices to the slices to be extracted. If there
@@ -409,6 +410,7 @@ class neuropixData:
         """To get the data of current slice."""
         t0 = time()
         tmp_file = os.path.join(self.save_dir, "temp.npy")
+        print('\nGet current slice data...')
         if os.path.exists(tmp_file):
             try:
                 del self.cur_data
