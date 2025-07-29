@@ -113,7 +113,7 @@ for stimTime in lfpStimTimes:
     minLen = nTime if nTime < minLen else minLen
 stimAvgLfp = np.mean([lfp[:,:minLen] for lfp in stimLfps], axis=0)
 csd = mua.getCurrentSourceDensity(
-    stimAvgLfp, samplingIntervalUm=100, nInterv=2, chSeparationUm=10)
+    stimAvgLfp, samplingIntervalUm=100, nInterv=2, chSeparationUm=10, mode='same')
 
 
 #%% Plotting
