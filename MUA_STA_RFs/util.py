@@ -550,7 +550,8 @@ def mapPsthsToShank(psths, chMap, emptyVal=np.nan):
     return chMappedPsths
 
 def getCurrentSourceDensity(
-        fieldPotential, samplingIntervalUm=100, nInterv=2, chSeparationUm=10):
+        fieldPotential, samplingIntervalUm=100, nInterv=2, chSeparationUm=10, 
+        mode='same'):
     """The second spatial derivative of the field potential profile (Swadlow et al., 2002)
     
     fieldPotential : array-like, 2D
@@ -558,13 +559,21 @@ def getCurrentSourceDensity(
        Shape = (nCh, nTime).
     chSeparationUm : int or float
         The average separation of the probe channels in micron.
+    mode : str
+        'same' or 'valid'. If 'same', the CSD returned will have the same shape 
+        as the fieldPotential.
     """
     diffGrid = nInterv * samplingIntervalUm
     nDiffGridCh = int(round(diffGrid / chSeparationUm))
-    nCh, nTime = fieldPotential.shape
+    if mode.lower() == 'same':
+        lfp = np.pad(
+            fieldPotential, pad_width=((nDiffGridCh, nDiffGridCh), (0, 0)), 
+            mode='constant', constant_values=0)
+    else:
+        lfp = fieldPotential
+    nCh, nTime = lfp.shape
     nValidCsdCh = nCh - 2 * nDiffGridCh
-    csd = fieldPotential[:nValidCsdCh] + fieldPotential[-nValidCsdCh:] \
-        - 2 * fieldPotential[nDiffGridCh:-nDiffGridCh]
+    csd = lfp[:nValidCsdCh] + lfp[-nValidCsdCh:] - 2 * lfp[nDiffGridCh:-nDiffGridCh]
     csd = csd / diffGrid ** 2
     return csd
 
